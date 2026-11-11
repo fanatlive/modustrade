@@ -1,0 +1,6 @@
+FROM postgres:17-alpine
+RUN apk add --no-cache python3
+WORKDIR /ops
+COPY backup.py /ops/backup.py
+ENV BACKUP_LOCAL_PG=1 PGCONNECT_TIMEOUT=5 PYTHONUNBUFFERED=1
+ENTRYPOINT ["python3", "/ops/backup.py"]

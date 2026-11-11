@@ -1,0 +1,55 @@
+{
+  "dependencies": [
+    {
+      "name": "django",
+      "version": "5.2.19",
+      "vulns": []
+    },
+    {
+      "name": "asgiref",
+      "version": "3.13.0",
+      "vulns": []
+    },
+    {
+      "name": "sqlparse",
+      "version": "0.6.1",
+      "vulns": []
+    },
+    {
+      "name": "tzdata",
+      "version": "2026.6",
+      "vulns": []
+    },
+    {
+      "name": "psycopg",
+      "version": "3.3.8",
+      "vulns": []
+    },
+    {
+      "name": "waitress",
+      "version": "3.0.2",
+      "vulns": []
+    },
+    {
+      "name": "whitenoise",
+      "version": "6.12.0",
+      "vulns": []
+    },
+    {
+      "name": "playwright",
+      "version": "1.65.0",
+      "vulns": []
+    },
+    {
+      "name": "greenlet",
+      "version": "3.5.6",
+      "vulns": []
+    },
+    {
+      "name": "psycopg-binary",
+      "version": "3.3.8",
+      "vulns": []
+    }
+  ],
+  "fixes": []
+}

@@ -1,0 +1,12 @@
+{
+  "phase": "disk_guard",
+  "accepted": false,
+  "database_created": false,
+  "database": "modus_guard_20261111_load",
+  "cards": 1000000,
+  "events": 10000000,
+  "disk_free_bytes": 9967390720,
+  "estimated_required_bytes": 54321741824,
+  "full_scale_target_verified": false,
+  "reason": "Insufficient free disk for guarded synthetic preparation."
+}

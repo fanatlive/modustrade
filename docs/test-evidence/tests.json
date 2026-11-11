@@ -1,0 +1,14 @@
+{
+  "postgresql": {
+    "discovered": 150,
+    "seconds": 45.139,
+    "skipped": 0,
+    "result": "OK"
+  },
+  "sqlite": {
+    "discovered": 150,
+    "seconds": 46.23,
+    "skipped": 9,
+    "result": "OK"
+  }
+}

@@ -1,0 +1,8 @@
+<div class="field">
+  <label for="canonical-search">Найти основное обращение</label>
+  <input id="canonical-search" type="search" data-canonical-search data-endpoint="{% url 'feedback:canonical_search' ticket.pk %}" placeholder="Номер или описание" aria-controls="canonical-ticket" aria-describedby="canonical-search-status">
+  <span id="canonical-search-status" class="field-help" data-canonical-status aria-live="polite">Показаны первые 25 обращений. Уточните поиск или откройте полный список.</span>
+  <label for="canonical-ticket">Основное обращение</label>
+  <select id="canonical-ticket" name="canonical_id" required><option value="">Выберите обращение</option>{% for candidate in canonical_candidates %}<option value="{{ candidate.pk }}" {% if command_form.canonical_id.value == candidate.pk|stringformat:'s' %}selected{% endif %}>{{ candidate.number }} — {{ candidate.title|truncatechars:55 }}</option>{% endfor %}</select>
+  <a class="text-button" href="{% url 'feedback:canonical_search' ticket.pk %}">Поиск по всем доступным обращениям</a>
+</div>

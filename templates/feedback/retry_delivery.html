@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block title %}Повторная доставка{% endblock %}
+{% block breadcrumb %}Повторная доставка{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'feedback:failed_deliveries' %}">К сбоям доставки</a>
+<section class="surface content-section"><h1>Повторить уведомление</h1><p class="prose">{{ item.ticket.number }} · {{ item.recipient }}</p><p>{{ item.event.summary }}</p>{% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}<form method="post" class="stack-form" data-submit-form>{% csrf_token %}{{ form.non_field_errors }}<div class="field">{{ form.reason.label_tag }}{{ form.reason }}{{ form.reason.errors }}</div><button class="button button-primary">Поставить повторную доставку в очередь</button></form></section>
+{% endblock %}

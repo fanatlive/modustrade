@@ -1,0 +1,12 @@
+<section class="surface content-section cycle-history" id="cycle-history"><h2>Циклы рассмотрения</h2>
+{% for item in cycles %}
+  <details class="history-disclosure cycle-record" {% if item.number != ticket.cycle_no %}open{% endif %}>
+    <summary>Цикл {{ item.number }}{% if item.number == ticket.cycle_no %} · текущий{% endif %}</summary>
+    <dl class="metadata-list"><div><dt>Начало</dt><dd>{{ item.started_at|date:'d.m.Y H:i'|default:'Нет исходной даты' }}</dd></div><div><dt>Первый ответ</dt><dd>{{ item.first_response_at|date:'d.m.Y H:i'|default:'Не зафиксирован' }}</dd></div><div><dt>Решение</dt><dd>{{ item.decision_at|date:'d.m.Y H:i'|default:'Не принято' }}</dd></div><div><dt>Завершение</dt><dd>{{ item.closed_at|date:'d.m.Y H:i'|default:'Цикл открыт' }}</dd></div></dl>
+    {% if item.resolution_summary %}<h3>{{ item.resolution_code }}</h3><p class="prose">{{ item.resolution_summary|linebreaksbr }}</p>{% endif %}
+    {% for result in item.history_results %}{% if result.payload.evidence %}<p class="prose"><strong>Подтверждение выполнения:</strong> {{ result.payload.evidence|linebreaksbr }}</p>{% endif %}{% endfor %}
+    {% for decision in item.history_decisions %}<article class="cycle-decision"><strong>{{ decision.get_code_display }}</strong><p class="prose">{{ decision.reason|linebreaksbr }}</p>{% if decision.criteria %}<p class="field-help">Критерий: {{ decision.criteria }}</p>{% endif %}<span class="subtle-text">{{ decision.actor }} · {{ decision.created_at|date:'d.m.Y H:i' }}</span></article>{% endfor %}
+  </details>
+{% endfor %}
+{% include 'feedback/partials/history_pagination.html' with navigation=cycles_navigation %}
+</section>

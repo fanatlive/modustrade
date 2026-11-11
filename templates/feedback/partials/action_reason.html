@@ -1,0 +1,1 @@
+<div class="field"><label for="{{ action_name }}-reason">Причина изменения</label><textarea id="{{ action_name }}-reason" name="reason" rows="3" required maxlength="5000">{% if command_form.command.value == action_name %}{{ command_form.reason.value|default_if_none:'' }}{% endif %}</textarea></div>

@@ -1,0 +1,12 @@
+{
+  "checks": [
+    "TLS certificate verified; app and worker ready",
+    "Production security headers and secure CSRF cookie",
+    "Prebuilt versioned static CSS served read-only",
+    "Monitoring token required; malformed token fails safely",
+    "Proxy access logs omit query text",
+    "Runtime role has no superuser, create DB/role/schema or bypass RLS",
+    "Django deployment checks passed"
+  ],
+  "passed": 7
+}

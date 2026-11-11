@@ -1,0 +1,66 @@
+{
+  "run_id": "2b16eb5cf0284d8ba748bd719102f119",
+  "phase": "externally_aborted",
+  "database": "modus_bounded_20261111_load",
+  "database_retained": false,
+  "synthetic_only": true,
+  "cards_target": 10000,
+  "events_target": 100000,
+  "rps_target": 20,
+  "duration_target_seconds": 1800,
+  "sessions_target": 100,
+  "checkpoints": [
+    {
+      "elapsed_seconds": 30,
+      "scheduled": 601,
+      "dropped": 301,
+      "errors": 35
+    },
+    {
+      "elapsed_seconds": 60,
+      "scheduled": 1201,
+      "dropped": 702,
+      "errors": 234
+    },
+    {
+      "elapsed_seconds": 90,
+      "scheduled": 1801,
+      "dropped": 1103,
+      "errors": 433
+    },
+    {
+      "elapsed_seconds": 120,
+      "scheduled": 2401,
+      "dropped": 1503,
+      "errors": 633
+    },
+    {
+      "elapsed_seconds": 150,
+      "scheduled": 3001,
+      "dropped": 1903,
+      "errors": 833
+    }
+  ],
+  "last_observed_checkpoint": {
+    "elapsed_seconds": 150,
+    "scheduled": 3001,
+    "dropped": 1903,
+    "errors": 833
+  },
+  "results": null,
+  "p95_available": false,
+  "actual_final_duration_seconds": null,
+  "final_total_counters_available": false,
+  "limits_met": false,
+  "full_scale_target_verified": false,
+  "database_bytes_after_abort": 81172147,
+  "database_counts_after_abort": {
+    "feedback_ticket": 10000,
+    "feedback_event": 100071,
+    "feedback_comment": 71,
+    "feedback_outbox": 710
+  },
+  "evidence_captured_at_utc": "2026-11-11T06:33:53.461469+00:00",
+  "explanation": "The first benchmark process was externally terminated after overload. Only printed checkpoints survived; final latencies and totals cannot be reconstructed. Values are observations at their checkpoint, not final totals.",
+  "cleanup_verified_guard_marker": true
+}

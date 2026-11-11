@@ -1,0 +1,111 @@
+name: modus-feedback-production
+x-app: &app
+  image: modus-feedback:production
+  pull_policy: never
+  environment: &app-env
+    DEBUG: 0
+    DEMO_MODE: 0
+    SECRET_KEY: ${SECRET_KEY:?Private SECRET_KEY is required}
+    DB_ENGINE: postgres
+    POSTGRES_DB: ${POSTGRES_DB:-modus}
+    POSTGRES_HOST: db
+    POSTGRES_PORT: 5432
+    POSTGRES_USER: ${APP_DB_USER:-modus_runtime}
+    POSTGRES_PASSWORD: ${APP_DB_PASSWORD:?Runtime password is required}
+    ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+    CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-https://localhost:8443}
+    BUSINESS_TIMEZONE: ${BUSINESS_TIMEZONE:-Asia/Bishkek}
+    DB_JIT: ${DB_JIT:-0}
+    TRUST_PROXY: 1
+    OPERATIONS_TOKEN: ${OPERATIONS_TOKEN:?Monitoring token is required}
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging: &logs
+    driver: json-file
+    options: {max-size: 10m, max-file: '3'}
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-modus}
+      POSTGRES_USER: ${POSTGRES_USER:-modus_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Owner password is required}
+    volumes: [production_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging: *logs
+  migrate:
+    <<: *app
+    build: .
+    environment:
+      <<: *app-env
+      POSTGRES_USER: ${POSTGRES_USER:-modus_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Owner password is required}
+      APP_DB_USER: ${APP_DB_USER:-modus_runtime}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Runtime password is required}
+    command: sh -c "python manage.py migrate --noinput && python ops/bootstrap_db.py"
+    depends_on:
+      db: {condition: service_healthy}
+  web:
+    <<: *app
+    restart: unless-stopped
+    command: [waitress-serve, --threads=8, --listen=0.0.0.0:8000, --trusted-proxy=*, --trusted-proxy-headers=x-forwarded-proto, 'config.wsgi:application']
+    healthcheck:
+      test: [CMD, python, -c, "import os,urllib.request; h=os.getenv('ALLOWED_HOSTS','localhost').split(',')[0].strip().lstrip('.'); h='localhost' if h=='*' else h; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8000/health/',headers={'Host':h}), timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+  worker:
+    <<: *app
+    restart: unless-stopped
+    command: python manage.py process_outbox --loop
+    healthcheck:
+      test: [CMD, python, manage.py, worker_health]
+      interval: 20s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    depends_on:
+      web: {condition: service_healthy}
+  proxy:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports: ["127.0.0.1:${HTTPS_PORT:-8443}:443"]
+    volumes:
+      - ./ops/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${TLS_CERT_DIR:-./.local/tls}:/etc/nginx/tls:ro
+    depends_on:
+      web: {condition: service_healthy}
+    logging: *logs
+  backup:
+    build:
+      context: ./ops
+      dockerfile: Dockerfile.backup
+    image: modus-backup:production
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-modus_owner}
+      POSTGRES_DB: ${POSTGRES_DB:-modus}
+      PGHOST: db
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Owner password is required}
+    volumes: ["${BACKUP_DIR:-./.local/production-backups}:/backups"]
+    command: [loop, --directory, /backups]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python3, /ops/backup.py, health, --directory, /backups]
+      interval: 60s
+      timeout: 5s
+      start_period: 120s
+      retries: 2
+    logging: *logs
+volumes:
+  production_data:

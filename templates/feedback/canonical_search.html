@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Поиск основного обращения{% endblock %}
+{% block breadcrumb %}Поиск дубликата{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'feedback:detail' ticket.pk %}">К обращению {{ ticket.number }}</a>
+<div class="page-heading"><div><h1>Основное обращение</h1><p>Найдите карточку, с которой нужно связать {{ ticket.number }}.</p></div></div>
+<section class="surface content-section"><form method="get" class="filter-row"><div class="field"><label for="canonical-query">Номер или описание</label><input id="canonical-query" type="search" name="q" maxlength="200" value="{{ q }}"></div><button class="button button-secondary">Найти</button></form>
+<p class="field-help">Найдено {{ page_obj.paginator.count }}. Показаны только доступные вам обращения.</p>
+<form method="post" action="{% url 'feedback:command' ticket.pk %}" class="stack-form" data-submit-form>{% include 'partials/command_fields.html' with action_name='duplicate' %}
+<div class="field"><label for="canonical-choice">Выберите основное обращение</label><select id="canonical-choice" name="canonical_id" required><option value="">Выберите обращение</option>{% for item in page_obj %}<option value="{{ item.pk }}">{{ item.number }} — {{ item.title }}</option>{% endfor %}</select></div>
+{% include 'feedback/partials/action_reason.html' with action_name='duplicate' %}<button class="button button-primary">Связать и закрыть дубликат</button></form>
+{% include 'partials/pagination.html' %}</section>
+{% endblock %}

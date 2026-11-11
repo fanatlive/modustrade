@@ -1,0 +1,7 @@
+Django==5.2.19
+asgiref==3.13.0
+sqlparse==0.6.1
+tzdata==2026.6
+psycopg[binary]==3.3.8
+waitress==3.0.2
+whitenoise==6.12.0

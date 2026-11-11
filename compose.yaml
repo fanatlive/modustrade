@@ -1,0 +1,98 @@
+name: modus-feedback
+services:
+  db:
+    restart: unless-stopped
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-modus}
+      POSTGRES_USER: ${POSTGRES_USER:-modus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_EXPOSED_PORT:-55432}:5432"
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  migrate:
+    build: .
+    image: modus-feedback:local
+    env_file: .env
+    environment:
+      DB_ENGINE: postgres
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    command: sh -c "python manage.py migrate --noinput && python ops/bootstrap_db.py"
+    depends_on:
+      db:
+        condition: service_healthy
+  web:
+    restart: unless-stopped
+    image: modus-feedback:local
+    pull_policy: never
+    env_file: .env
+    environment:
+      DB_ENGINE: postgres
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${APP_DB_USER:-modus_runtime}
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in .env}
+    command: waitress-serve --listen=0.0.0.0:8000 config.wsgi:application
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 10
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  worker:
+    restart: unless-stopped
+    image: modus-feedback:local
+    pull_policy: never
+    env_file: .env
+    environment:
+      DB_ENGINE: postgres
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${APP_DB_USER:-modus_runtime}
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in .env}
+    command: python manage.py process_outbox --loop
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, manage.py, worker_health]
+      interval: 20s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+  backup:
+    profiles: [operations]
+    restart: unless-stopped
+    build:
+      context: ./ops
+      dockerfile: Dockerfile.backup
+    image: modus-backup:local
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-modus}
+      POSTGRES_DB: ${POSTGRES_DB:-modus}
+      PGHOST: db
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes: [./.local/backups:/backups]
+    command: [loop, --directory, /backups]
+    depends_on:
+      db: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python3, /ops/backup.py, health, --directory, /backups]
+      interval: 60s
+      timeout: 5s
+      start_period: 120s
+      retries: 2
+volumes:
+  postgres_data:

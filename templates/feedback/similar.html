@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Похожие обращения{% endblock %}
+{% block breadcrumb %}Похожие обращения{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'feedback:detail' ticket.pk %}">К обращению {{ ticket.number }}</a>
+<div class="page-heading"><div><h1>Похожие обращения</h1><p>Возможные совпадения с {{ ticket.number }} в вашей области доступа.</p></div></div>
+<section class="surface content-section"><p class="field-help">Совпадение слов помогает найти связанные темы. Перед связыванием проверьте содержание; система не объявляет карточки дубликатами автоматически.</p>
+{% for item in page_obj %}<article class="content-section"><a class="ticket-title" href="{% url 'feedback:detail' item.pk %}">{{ item.number }} — {{ item.title }}</a><p class="prose">{{ item.description|truncatechars:350 }}</p><span class="subtle-text">{{ item.status_label }} · {{ item.category.name }}</span></article>{% empty %}<p class="small-empty">Похожие доступные обращения не найдены.</p>{% endfor %}
+{% include 'partials/pagination.html' %}</section>
+{% endblock %}
