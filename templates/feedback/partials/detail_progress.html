@@ -1,0 +1,18 @@
+{% with s=ticket.status %}
+<ol class="surface progress-steps" aria-label="Путь обращения">
+  <li class="step-done"><span class="progress-bar"></span><span class="step-name">Подано</span><span class="step-hint">{% if ticket.submitted_at %}{{ ticket.submitted_at|date:'d.m.Y' }}{% else %}дата неизвестна{% endif %}</span></li>
+  <li class="step-done"><span class="progress-bar"></span><span class="step-name">Назначено</span><span class="step-hint">{{ ticket.queue.name }}</span></li>
+  {% if s == 'NEW' %}<li class="step-current" aria-current="step"><span class="progress-bar"></span><span class="step-name">Рассмотрение</span><span class="step-hint">ожидает разбора</span></li>
+  {% elif s == 'REVIEW' %}<li class="step-current" aria-current="step"><span class="progress-bar"></span><span class="step-name">Рассмотрение</span><span class="step-hint">идёт разбор</span></li>
+  {% elif s == 'WAITING_INFO' %}<li class="step-current step-waiting" aria-current="step"><span class="progress-bar"></span><span class="step-name">Уточнение</span><span class="step-hint">{% if is_author %}ждёт вашего ответа{% else %}ждёт ответа автора{% endif %}</span></li>
+  {% else %}<li class="step-done"><span class="progress-bar"></span><span class="step-name">Рассмотрение</span><span class="step-hint">{% if cycle.first_response_at %}ответ {{ cycle.first_response_at|date:'d.m.Y' }}{% else %}завершено{% endif %}</span></li>{% endif %}
+  {% if s == 'IN_PROGRESS' or s == 'CLOSED' %}<li class="step-done"><span class="progress-bar"></span><span class="step-name">Решение</span><span class="step-hint">{% if s == 'IN_PROGRESS' or ticket.decision == 'APPROVED' %}одобрено{% elif ticket.decision == 'DECLINED' %}отклонено{% elif ticket.decision == 'ACKNOWLEDGED' %}принято к сведению{% else %}без решения по сути{% endif %}</span></li>
+  {% else %}<li><span class="progress-bar"></span><span class="step-name">Решение</span><span class="step-hint">{% if cycle.decision_due_at %}до {{ cycle.decision_due_at|date:'d.m' }}{% else %}—{% endif %}</span></li>{% endif %}
+  {% if s == 'IN_PROGRESS' %}<li class="step-current" aria-current="step"><span class="progress-bar"></span><span class="step-name">Выполнение</span><span class="step-hint">{% if ticket.plan_due_at %}до {{ ticket.plan_due_at|date:'d.m' }}{% else %}идёт работа{% endif %}</span></li>
+  {% elif s == 'CLOSED' and ticket.resolution_code == 'IMPLEMENTED' %}<li class="step-done"><span class="progress-bar"></span><span class="step-name">Выполнение</span><span class="step-hint">выполнено</span></li>
+  {% elif s == 'CLOSED' %}<li class="step-skipped"><span class="progress-bar"></span><span class="step-name">Выполнение</span><span class="step-hint">не требуется</span></li>
+  {% else %}<li><span class="progress-bar"></span><span class="step-name">Выполнение</span><span class="step-hint">после одобрения</span></li>{% endif %}
+  {% if s == 'CLOSED' %}<li class="step-done"><span class="progress-bar"></span><span class="step-name">Результат</span><span class="step-hint">{{ ticket.get_resolution_code_display|default:'зафиксирован' }}</span></li>
+  {% else %}<li><span class="progress-bar"></span><span class="step-name">Результат</span><span class="step-hint">—</span></li>{% endif %}
+</ol>
+{% endwith %}

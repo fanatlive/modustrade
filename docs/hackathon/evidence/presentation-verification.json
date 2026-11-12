@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-12",
+  "postgresql": {
+    "version": 17,
+    "tests": 165,
+    "passed": 165,
+    "skipped": 0,
+    "seconds": 44.765
+  },
+  "sqlite": {
+    "tests": 165,
+    "passed": 156,
+    "skipped_postgresql": 9,
+    "seconds": 25.314
+  },
+  "browser": {
+    "suites": 4,
+    "javascript_errors": 0,
+    "viewports": [
+      1440,
+      390
+    ],
+    "backend": "PostgreSQL 17"
+  },
+  "rehearsal": {
+    "fresh_database": true,
+    "story_cards": 6,
+    "overdue_story_cards": 0,
+    "worker_health": 200
+  },
+  "checks": [
+    "Django check",
+    "No migration drift",
+    "Ruff repository baseline",
+    "mypy contracts.py",
+    "bash -n scripts/rehearse.sh",
+    "git diff --check"
+  ],
+  "human_usability_test": "not performed"
+}

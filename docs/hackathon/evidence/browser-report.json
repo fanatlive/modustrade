@@ -1,0 +1,22 @@
+{
+  "checks": [
+    "author registration with CSRF and redirect",
+    "internal comment absent in author DOM",
+    "information request and author response",
+    "approval and evidenced implementation",
+    "reopening preserves prior history",
+    "demo excluded from production metrics",
+    "status and type totals match visible tickets",
+    "foreign author receives 404",
+    "mobile menu, escape and viewport fit"
+  ],
+  "javascript_errors": [],
+  "ticket_url": "http://127.0.0.1:8765/requests/327ab8a6-d24f-4425-a30b-e7a267748a9e/",
+  "screenshots": [
+    "analytics-desktop.png",
+    "login-desktop.png",
+    "inbox-mobile.png",
+    "inbox-desktop.png",
+    "detail-desktop.png"
+  ]
+}

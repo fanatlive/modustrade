@@ -3,9 +3,9 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#173a46">
+  <meta name="theme-color" content="#0F2A30">
   <title>{% block title %}Обратная связь{% endblock %} · Модус Трейд</title>
-  <link rel="stylesheet" href="{% static 'feedback/app.css' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap"><link rel="stylesheet" href="{% static 'feedback/app.css' %}"><link rel="stylesheet" href="{% static 'feedback/theme.css' %}">
   <script defer src="{% static 'feedback/app.js' %}"></script>
 </head>
 <body>
@@ -15,9 +15,11 @@
     <a class="brand" href="{% url 'feedback:list' %}"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 26V6h5l7 12 7-12h5v20h-5V15l-7 11-7-11v11z" fill="currentColor"/></svg></span><span>Модус Трейд<small>Обратная связь</small></span></a>
     <div class="workspace-label"><span class="live-dot"></span> Пространство сотрудников</div>
     <nav class="main-nav">
+      {% if demo_mode %}<a href="{% url 'feedback:demo' %}" class="nav-link {% if active_nav == 'demo' %}active{% endif %}">{% include 'partials/icon.html' with icon='play' %}<span>Демонстрация</span></a>{% endif %}
       <a href="{% url 'feedback:list' %}" class="nav-link {% if active_nav == 'list' %}active{% endif %}" {% if active_nav == 'list' %}aria-current="page"{% endif %}>{% include 'partials/icon.html' with icon='inbox' %}<span>Все обращения</span></a>
       {% if is_operator %}<a href="{% url 'feedback:queue' %}" class="nav-link {% if active_nav == 'queue' %}active{% endif %}" {% if active_nav == 'queue' %}aria-current="page"{% endif %}>{% include 'partials/icon.html' with icon='layers' %}<span>Моя очередь</span></a>{% endif %}
       <a href="{% url 'feedback:analytics' %}" class="nav-link {% if active_nav == 'analytics' %}active{% endif %}" {% if active_nav == 'analytics' %}aria-current="page"{% endif %}>{% include 'partials/icon.html' with icon='chart' %}<span>Аналитика</span></a>
+      <a href="{% url 'feedback:recurring' %}" class="nav-link {% if active_nav == 'recurring' %}active{% endif %}" {% if active_nav == 'recurring' %}aria-current="page"{% endif %}>{% include 'partials/icon.html' with icon='repeat' %}<span>Повторяющиеся проблемы</span></a>
       <a href="{% url 'feedback:notifications' %}" class="nav-link {% if active_nav == 'notifications' %}active{% endif %}" {% if active_nav == 'notifications' %}aria-current="page"{% endif %}>{% include 'partials/icon.html' with icon='bell' %}<span>Уведомления</span>{% if unread_notifications %}<span class="nav-count">{{ unread_notifications }}</span>{% endif %}</a>
       {% if can_manage_deliveries %}<a href="{% url 'feedback:failed_deliveries' %}" class="nav-link {% if active_nav == 'deliveries' %}active{% endif %}">{% include 'partials/icon.html' with icon='alert' %}<span>Сбои доставки</span></a>{% endif %}
       {% if can_manage_settings %}<a href="{% url 'feedback:settings' %}" class="nav-link {% if active_nav == 'settings' %}active{% endif %}" {% if active_nav == 'settings' %}aria-current="page"{% endif %}>{% include 'partials/icon.html' with icon='settings' %}<span>Настройки</span></a>{% endif %}

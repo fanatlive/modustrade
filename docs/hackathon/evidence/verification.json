@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-12",
+  "python": "3.13",
+  "sqlite": {
+    "discovered": 160,
+    "passed": 151,
+    "skipped_postgresql": 9,
+    "seconds": 22.05
+  },
+  "postgresql": {
+    "major_version": 17,
+    "discovered": 160,
+    "passed": 160,
+    "skipped": 0,
+    "seconds": 46.117
+  },
+  "browser": {
+    "engine": "Chromium",
+    "backend": "PostgreSQL 17",
+    "business_scenarios": 9,
+    "ui_regressions": 4,
+    "recurrence_viewports": [
+      1440,
+      390
+    ],
+    "javascript_errors": 0
+  },
+  "checks": {
+    "django_check": "passed",
+    "migration_drift": "none",
+    "ruff": "passed (repository baseline)",
+    "mypy": "passed (contracts.py only)",
+    "clean_copy_new_venv_and_database": "passed",
+    "original_source_cards_unchanged_on_story_import": "tested"
+  },
+  "code_sha256": "5967e4f29e5f332ebadc6af8793fb15ed10cc7f931ddcd7b024f4db9ef814d60",
+  "hash_scope": "Sorted paths and file bytes separated by NUL; .py/.html/.css/.js/.sh/.ps1 in feedback/config/templates/static/tests/scripts, excluding __pycache__",
+  "not_done": [
+    "Human usability study",
+    "Team rehearsals and backup video",
+    "Production/load/restore retest"
+  ]
+}

@@ -1,0 +1,8 @@
+<section class="surface content-section" id="related">
+<h2>Связанные обращения</h2>
+<p class="field-help">Только действующие прямые связи и доступные вам карточки. Связывание не означает, что общая проблема уже решена.</p>
+{% if linked_parent %}<p>Основное обращение: <a href="{% url 'feedback:detail' linked_parent.canonical_id %}#related">{{ linked_parent.canonical.number }} — {{ linked_parent.canonical.title }}</a> · {{ linked_parent.canonical.status_label }}</p>{% endif %}
+{% for link in linked_children %}<p><a href="{% url 'feedback:detail' link.ticket_id %}#related">{{ link.ticket.number }} — {{ link.ticket.title }}</a> · {{ link.ticket.status_label }}</p>{% endfor %}
+{% if not linked_parent and not linked_children %}<p class="small-empty">Доступных связанных обращений нет.</p>{% endif %}
+{% include 'feedback/partials/history_pagination.html' with navigation=related_navigation %}
+</section>

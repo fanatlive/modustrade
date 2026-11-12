@@ -1,0 +1,6 @@
+{% load tz %}
+<section class="surface author-overview" aria-label="Что происходит дальше">
+<div><p class="eyebrow">Что происходит дальше</p><h2>{{ author_summary.title }}</h2><p>{{ author_summary.message }}</p><a class="button button-primary" href="{{ author_summary.anchor }}">{{ author_summary.action }}</a></div>
+<dl><div><dt>Кто отвечает</dt><dd>{% if ticket.assignee and ticket.assignee.is_active %}{{ ticket.assignee }}{% else %}Координатор очереди{% endif %}<small>{{ ticket.queue.name }}</small></dd></div><div><dt>{{ author_summary.due_label }}</dt><dd>{% if author_summary.due %}{{ author_summary.due|date:'d.m.Y H:i' }}<small>{% get_current_timezone as tz %}Время: {{ tz }}</small>{% else %}Срок пока не установлен{% endif %}</dd></div></dl>
+{% if author_summary.overdue %}<p class="author-overdue" role="status">Срок прошёл. Ответственные должны уточнить дальнейший план. Вы можете написать им в обсуждении.</p>{% endif %}
+</section>

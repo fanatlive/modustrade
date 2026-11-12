@@ -65,7 +65,7 @@ if DB_ENGINE == 'postgres':
         'OPTIONS': {'connect_timeout': 5, 'options': '-c jit='+('on' if os.getenv('DB_JIT', '0') == '1' else 'off')},
     }}
 elif DB_ENGINE == 'sqlite' and DEBUG:
-    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3', 'OPTIONS': {'timeout': 20}}}
+    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': os.getenv('SQLITE_PATH') or BASE_DIR / 'db.sqlite3', 'OPTIONS': {'timeout': 20}}}
 else:
     raise ImproperlyConfigured('Use DB_ENGINE=postgres for a pilot; SQLite is allowed only with DEBUG=1.')
 AUTH_USER_MODEL = 'feedback.User'

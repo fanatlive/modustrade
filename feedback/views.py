@@ -25,6 +25,9 @@ from .models import Category, Event, InfoRequest, Notification, OrgUnit, Outbox,
 from .permissions import can_coordinate, can_process, can_view_internal, has_role, operational_users, staff_scope, visible_notifications, visible_tickets
 from .services import COMMAND_TYPE_MATRIX, DomainError, create_ticket, execute_command
 from .search import scoped_search, similar_tickets
+from .recurrence import recurring_tickets, visible_relations
+from .forms import RecurrenceFilterForm
+from .presentation import author_summary, has_demo_result, RESULT_SOURCE
 
 
 def _overdue_q() -> Q:
@@ -83,7 +86,9 @@ def work_queue(request):
 
 @login_required
 def ticket_create(request):
-    form = CreateTicketForm(request.POST or None)
+    preset_type = request.GET.get("type")
+    initial = {"request_type": preset_type} if preset_type in {"PROBLEM", "SUGGESTION", "PRAISE"} else None
+    form = CreateTicketForm(request.POST or None, initial=initial)
     status = 200
     if request.method == "POST":
         if form.is_valid():
@@ -115,6 +120,9 @@ def _history_navigation(request, page, parameter, anchor, label, ticket_id):
 
 def _detail(request, pk, *, error=None, status=200, command_form=None):
     ticket = get_object_or_404(visible_tickets(request.user).select_related("author", "category", "queue", "assignee", "affected_unit"), pk=pk)
+    relations = visible_relations(request.user)
+    linked_parent = relations.filter(ticket=ticket).select_related("canonical").first()
+    linked_children = Paginator(relations.filter(canonical=ticket).select_related("ticket").order_by("ticket__number"), 10).get_page(request.GET.get("related_page"))
     internal = can_view_internal(request.user, ticket)
     comments = ticket.comments.select_related("author")
     events = ticket.events.select_related("actor")
@@ -136,6 +144,8 @@ def _detail(request, pk, *, error=None, status=200, command_form=None):
     cycles = list(cycles_page.object_list)
     cycle_numbers = [cycle.number for cycle in cycles]
     current_cycle = next((cycle for cycle in cycles if cycle.number == ticket.cycle_no), None) or ticket.current_cycle
+    active_info = ticket.info_requests.filter(answered_at__isnull=True).first()
+    summary = author_summary(ticket, current_cycle, active_info)
     decisions = list(ticket.decisions.filter(cycle_no=ticket.cycle_no).select_related("actor").order_by("created_at"))
     cycle_decisions = list(ticket.decisions.filter(cycle_no__in=cycle_numbers).select_related("actor").order_by("created_at"))
     implementations = events.filter(kind="IMPLEMENT", payload__cycle_no__in=cycle_numbers)
@@ -156,6 +166,9 @@ def _detail(request, pk, *, error=None, status=200, command_form=None):
         candidates = candidates.order_by("number")
     canonical_page = Paginator(candidates, 25).get_page(request.GET.get("canonical_page"))
     return render(request, "feedback/detail.html", {
+        "author_summary": summary, "demo_result_available": settings.DEMO_MODE and has_demo_result(ticket),
+        "linked_parent": linked_parent, "linked_children": linked_children,
+        "related_navigation": _history_navigation(request, linked_children, "related_page", "related", "Связанные обращения", ticket.pk),
         "ticket": ticket, "comments": comments, "events": events.order_by("-sequence"),
         "comments_page": comments_page, "events_page": events_page, "cycles_page": cycles_page, "info_page": info_page,
         "comments_navigation": _history_navigation(request, comments_page, "comments_page", "conversation", "Страницы обсуждения", ticket.pk),
@@ -164,7 +177,7 @@ def _detail(request, pk, *, error=None, status=200, command_form=None):
         "info_navigation": _history_navigation(request, info_page, "info_page", "info-history", "Страницы уточнений", ticket.pk),
         "detail_querystring": request.GET.urlencode(),
         "decisions": decisions, "cycles": cycles, "cycle": current_cycle,
-        "info_request": ticket.info_requests.filter(answered_at__isnull=True).first(),
+        "info_request": active_info,
         "info_history": info_page.object_list,
         "can_process_ticket": can_process(request.user, ticket), "can_coordinate_ticket": can_coordinate(request.user, ticket),
         "type_commands": {name for name, types in COMMAND_TYPE_MATRIX.items() if ticket.request_type in types and not (ticket.status == "REVIEW" and ticket.decision == "APPROVED" and name in {"approve", "decline", "acknowledge"})},
@@ -502,3 +515,41 @@ def retry_delivery(request, pk):
             messages.success(request, "Повторная доставка поставлена в очередь.")
             return redirect("feedback:failed_deliveries")
     return render(request, "feedback/retry_delivery.html", {"item": item, "form": form, "error": error, "active_nav": "deliveries"}, status=status)
+
+
+@login_required
+def recurring_problems(request):
+    params = request.GET.copy()
+    params.setdefault("mode", "demo" if settings.DEMO_MODE else "production")
+    form = RecurrenceFilterForm(params)
+    valid = form.is_valid()
+    tickets = recurring_tickets(request.user, demo=form.cleaned_data["mode"] == "demo",
+        date_from=form.cleaned_data.get("date_from"), date_to=form.cleaned_data.get("date_to")) if valid else Ticket.objects.none()
+    page = Paginator(tickets, 15).get_page(request.GET.get("page"))
+    params.pop("page", None)
+    return render(request, "feedback/recurring.html", {"filters": form, "page_obj": page,
+        "querystring": params.urlencode(), "active_nav": "recurring"}, status=200 if valid else 422)
+
+
+@login_required
+def demo_home(request):
+    if not settings.DEMO_MODE:
+        raise Http404
+    tickets = list(visible_tickets(request.user).filter(is_demo=True,
+        source_record_id__in=['HACKATHON-V1-1', 'HACKATHON-V1-5', RESULT_SOURCE]).select_related('assignee', 'queue').prefetch_related('cycles'))
+    by_source = {ticket.source_record_id: ticket for ticket in tickets}
+    steps = [
+        {'title': 'Живой сценарий', 'description': 'Автор подаёт обращение; исполнитель уточняет, принимает решение и фиксирует результат.', 'ticket': by_source.get('HACKATHON-V1-5')},
+        {'title': 'Одна причина — несколько обращений', 'description': 'Основная работа и три подтверждённых повтора. Закрытие дубля не означает устранение причины.', 'ticket': by_source.get('HACKATHON-V1-1')},
+        {'title': 'Готовый результат', 'description': 'Завершённый учебный пример с памяткой, которую можно открыть и проверить.', 'ticket': by_source.get(RESULT_SOURCE)},
+    ]
+    return render(request, 'feedback/demo.html', {'active_nav': 'demo', 'steps': steps,
+        'stale_demo': any(t.is_overdue for t in tickets)})
+
+
+@login_required
+def demo_result(request, pk):
+    ticket = get_object_or_404(visible_tickets(request.user), pk=pk)
+    if not settings.DEMO_MODE or not has_demo_result(ticket):
+        raise Http404
+    return render(request, 'feedback/demo_result.html', {'ticket': ticket, 'active_nav': 'demo'})

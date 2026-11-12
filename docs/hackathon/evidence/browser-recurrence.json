@@ -1,0 +1,7 @@
+{
+  "checks": [
+    "1440px: navigation, three repeats, bidirectional links, production exclusion, no horizontal overflow",
+    "390px: navigation, three repeats, bidirectional links, production exclusion, no horizontal overflow"
+  ],
+  "page_errors": []
+}

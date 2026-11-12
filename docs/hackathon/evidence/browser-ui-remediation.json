@@ -1,0 +1,9 @@
+{
+  "checks": [
+    "409 preserves internal selection and text; retry stays hidden from author",
+    "closed mobile sidebar excluded from keyboard navigation",
+    "mobile menu focuses navigation and returns focus on Escape",
+    "desktop resize restores navigation access"
+  ],
+  "page_errors": []
+}

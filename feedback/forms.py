@@ -92,6 +92,18 @@ class CommandForm(forms.Form):
     effective_priority = forms.ChoiceField(required=False, choices=PRIORITIES)
 
 
+class RecurrenceFilterForm(forms.Form):
+    mode = forms.ChoiceField(label="Данные", choices=[("demo", "Демонстрационные"), ("production", "Рабочие")])
+    date_from = forms.DateField(label="Повторные обращения с", required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    date_to = forms.DateField(label="По", required=False, widget=forms.DateInput(attrs={"type": "date"}))
+
+    def clean(self):
+        values = super().clean()
+        if values.get("date_from") and values.get("date_to") and values["date_from"] > values["date_to"]:
+            raise forms.ValidationError("Начало периода должно быть раньше окончания.")
+        return values
+
+
 class AnalyticsFilterForm(forms.Form):
     date_from = forms.DateField(label="Поступили с", required=False, widget=forms.DateInput(attrs={"type": "date"}))
     date_to = forms.DateField(label="Поступили по", required=False, widget=forms.DateInput(attrs={"type": "date"}))

@@ -15,7 +15,9 @@ def main():
     address = urlparse(args.base_url)
     if address.hostname not in {"localhost", "127.0.0.1"} or address.port == 8000:
         parser.error("Use an isolated localhost QA server, not the main port 8000.")
-    if not os.getenv("POSTGRES_DB", "").endswith("_browser"):
+    sqlite_path = Path(os.getenv("SQLITE_PATH", ""))
+    isolated_sqlite = os.getenv("DB_ENGINE") == "sqlite" and sqlite_path.is_absolute() and sqlite_path.name.endswith("_browser.sqlite3")
+    if not (isolated_sqlite or (os.getenv("DB_ENGINE") == "postgres" and os.getenv("POSTGRES_DB", "").endswith("_browser"))):
         parser.error("Set POSTGRES_DB to the isolated *_browser database used by this server.")
     base = args.base_url.rstrip("/")
     checks, errors = [], []

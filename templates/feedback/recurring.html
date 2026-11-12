@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Повторяющиеся проблемы{% endblock %}
+{% block breadcrumb %}Повторяющиеся проблемы{% endblock %}
+{% block content %}
+<div class="page-heading"><div><h1>Повторяющиеся проблемы</h1><p>Темы с подтверждёнными связями дубликатов в вашей области доступа.</p></div></div>
+<section class="surface content-section"><form method="get" class="stack-form"><div class="field-grid">{% for field in filters %}<div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}</div>{{ filters.non_field_errors }}<div class="form-actions"><button class="button button-primary">Показать</button></div></form>
+<p class="field-help">Число повторов не включает основную карточку. Период относится к дате подачи повторных обращений; основная карточка может быть старше. Без периода учитываются и обращения с неизвестной датой. Показаны текущие прямые связи, без объединения цепочек и без исторического среза. Демо и рабочие данные считаются отдельно.</p></section>
+<section class="surface recurring-list" aria-label="Рейтинг повторяющихся проблем">
+{% for item in page_obj %}<article class="recurring-item"><div class="recurring-main"><div class="ticket-meta"><span>{{ item.number }}</span><span>{{ item.category.name }}</span></div><h2><a class="ticket-title" href="{% url 'feedback:detail' item.pk %}#related">{{ item.title }}</a></h2><p class="recurring-meta"><span class="status-badge status-{{ item.status }}"><i></i>{{ item.status_label }}</span><span>Ответственный: {{ item.assignee|default:'Не назначен' }} · {{ item.queue.name }}</span></p></div><strong class="recurring-count">Повторов: {{ item.repeat_count }}</strong></article>{% empty %}<p class="small-empty">За выбранный период доступных подтверждённых повторов нет. Похожие формулировки можно проверить в карточке обращения и связать как дубликаты.</p>{% endfor %}
+{% include 'partials/pagination.html' %}</section>
+{% endblock %}

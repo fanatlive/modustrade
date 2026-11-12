@@ -37,6 +37,9 @@ AUTHOR_MAP = {
     "Сотрудник офиса": ("author_office", "Офис", "office"),
     "Сотрудник проектирования": ("author_design", "Проектирование", "design"),
 }
+AUTHOR_DISPLAY_NAMES = {
+    "author": ("Данил", "Колбасенко"),
+}
 QUEUE_MAP = {
     "Межотдельное взаимодействие": "procurement", "Информационная прозрачность": "projects",
     "Каталог и данные": "it", "Обучение": "hr", "Документооборот": "processes",
@@ -248,8 +251,9 @@ class Command(BaseCommand):
         users = {}
         for source_role, (username, unit_name, unit_code) in AUTHOR_MAP.items():
             unit, _ = OrgUnit.objects.get_or_create(code=unit_code, defaults={"name": unit_name})
+            first_name, last_name = AUTHOR_DISPLAY_NAMES.get(username, ("Демо", source_role))
             user, created = User.objects.get_or_create(username=username, defaults={
-                "first_name": "Демо", "last_name": source_role,
+                "first_name": first_name, "last_name": last_name,
                 "role": "author", "org_unit": unit,
             })
             if created:

@@ -1,0 +1,7 @@
+{
+  "checks": [
+    "1440px: login return, demo start, author next step, result anchor, guide, back navigation, no overflow",
+    "390px: login return, demo start, author next step, result anchor, guide, back navigation, no overflow"
+  ],
+  "javascript_errors": []
+}

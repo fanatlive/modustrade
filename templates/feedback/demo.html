@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Демонстрация{% endblock %}
+{% block breadcrumb %}Демонстрация{% endblock %}
+{% block content %}
+<div class="page-heading"><div><h1>От обращения к результату</h1><p>Сценарий защиты на 5–7 минут. Все примеры вымышлены.</p></div></div>
+<section class="surface content-section"><h2>Вы вошли как {{ user }}</h2><p>Роль: {{ user.role_label }}. Для автора и исполнителя используйте разные профили браузера. Обычные вкладки одного профиля разделяют вход.</p><p>Автор: <code>hack_author</code> · Исполнитель: <code>hack_processor</code> · Координатор: <code>hack_coordinator</code></p><p><a href="{% url 'feedback:create' %}" class="button button-primary">Создать обращение для показа</a></p></section>
+{% if stale_demo %}<div class="alert alert-warning" role="status">В наборе есть просроченные карточки. Для чистой репетиции запустите новый демо-набор по инструкции; текущая история и сроки не сбрасываются.</div>{% endif %}
+<ol class="demo-steps">{% for step in steps %}<li class="surface demo-step"><h2>{{ step.title }}</h2><p>{{ step.description }}</p>{% if step.ticket %}<a class="demo-card-link" href="{% url 'feedback:detail' step.ticket.pk %}">{{ step.ticket.title }}</a><p><span class="status-badge status-{{ step.ticket.status }}"><i></i>{{ step.ticket.status_label }}</span>{% if step.ticket.is_overdue %} <span class="overdue-label">Есть просрочка</span>{% endif %}</p>{% else %}<p>Карточка не подготовлена или недоступна вашей учётной записи. Проверьте подготовку набора и роль.</p>{% endif %}</li>{% endfor %}</ol>
+<p><a class="button button-secondary" href="{% url 'feedback:recurring' %}?mode=demo">Показать повторяющиеся проблемы</a></p>
+{% endblock %}

@@ -5,11 +5,14 @@
 <a class="back-link" href="{% url 'feedback:list' %}">{% include 'partials/icon.html' with icon='arrow-left' %}К обращениям</a>
 <a class="text-button" href="{% url 'feedback:similar' ticket.pk %}">Похожие обращения</a>
 <div class="detail-heading"><div class="ticket-meta"><span>{{ ticket.number }}</span><span>{{ ticket.type_label }}</span>{% if ticket.is_demo %}<span class="mini-demo">Демонстрационные данные</span>{% endif %}{% if ticket.confidentiality == 'RESTRICTED' %}<span class="confidential-label">{% include 'partials/icon.html' with icon='lock' %}Конфиденциальное</span>{% endif %}</div><h1>{{ ticket.title }}</h1><div class="detail-heading-bottom"><span class="status-badge status-{{ ticket.status }}"><i></i>{{ ticket.status_label }}</span><span class="priority priority-{{ ticket.effective_priority }}"><i></i>{{ ticket.priority_label }} приоритет</span><span class="muted">{{ ticket.category.name }}</span></div></div>
+{% include 'feedback/partials/detail_progress.html' %}
 {% if command_error %}<div class="alert alert-error" role="alert">{% include 'partials/icon.html' with icon='alert' %}<div>{{ command_error }}{% if command_form.errors %}{{ command_form.errors }}{% endif %}</div></div>{% endif %}
 {% if awaiting_reassignment %}<div class="alert alert-warning" role="status"><div><strong>Требуется переназначение исполнителя</strong><p>Ответ автора сохранён. Решение об одобрении, критерий готовности и срок реализации действуют. Координатор должен назначить доступного исполнителя, чтобы продолжить реализацию.</p></div></div>{% endif %}
 {% if ticket.quality_flags %}<div class="alert alert-warning">{% include 'partials/icon.html' with icon='alert' %}<div><strong>Исходные сведения требуют проверки</strong><ul>{% for flag in ticket.quality_flags %}<li>{{ flag }}</li>{% endfor %}</ul></div></div>{% endif %}
+{% if is_author %}{% include 'feedback/partials/author_overview.html' %}{% endif %}
 <div class="detail-layout"><div class="detail-main">
 {% include 'feedback/partials/detail_summary.html' %}
+{% include 'feedback/partials/detail_related.html' %}
 {% include 'feedback/partials/detail_conversation.html' %}
 {% include 'feedback/partials/detail_decisions.html' %}
 {% include 'feedback/partials/detail_cycles.html' %}

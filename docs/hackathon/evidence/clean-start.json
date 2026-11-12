@@ -1,0 +1,7 @@
+{
+  "/health/": 200,
+  "/health/worker/": 200,
+  "/accounts/login/": 200,
+  "/static/feedback/app.css": 200,
+  "delivered_notifications_to_demo_author": 8
+}
