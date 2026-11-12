@@ -11,6 +11,9 @@ from feedback.services import create_ticket, execute_command
 from feedback.presentation import RESULT_SOURCE
 
 PREFIX = 'HACKATHON-V1-'
+# Readable numbers for the presentation set, in the style of imported MT-A-0XX cards.
+NUMBER_PREFIX = 'MT-D-'
+RESULT_NUMBER = NUMBER_PREFIX + '006'
 DISPLAY_NAMES = {'author': 'Анна — автор демо', 'processor': 'Илья — исполнитель демо', 'coordinator': 'Мария — координатор демо'}
 DESCRIPTIONS = [
     'Синтетический пример: сотрудники не могут найти актуальную инструкцию согласования закупок.',
@@ -69,7 +72,7 @@ class Command(BaseCommand):
             ticket.refresh_from_db()
             return result
         for index, description in enumerate(DESCRIPTIONS, 1):
-            ticket = create_ticket(actor=users['author'], data={'category': category, 'request_type': 'PROBLEM', 'description': description}, idempotency_key=PREFIX + str(index))
+            ticket = create_ticket(actor=users['author'], data={'category': category, 'request_type': 'PROBLEM', 'description': description}, idempotency_key=PREFIX + str(index), number=f'{NUMBER_PREFIX}{index:03d}')
             ticket.source_record_id = PREFIX + str(index)
             ticket.source_data = {'origin': 'hackathon_story_v1', 'synthetic': True, 'note': 'Не факт компании; отдельный сценарий защиты.'}
             ticket.save(update_fields=['source_record_id', 'source_data'])
@@ -92,7 +95,8 @@ class Command(BaseCommand):
             return
         category = Category.objects.get(code='hackathon-story')
         ticket = create_ticket(actor=users['author'], data={'category': category, 'request_type': 'SUGGESTION',
-            'description': 'Учебный пример: опубликована единая памятка по согласованию закупки.'}, idempotency_key=RESULT_SOURCE)
+            'description': 'Учебный пример: опубликована единая памятка по согласованию закупки.'}, idempotency_key=RESULT_SOURCE,
+            number=RESULT_NUMBER)
         ticket.source_record_id = RESULT_SOURCE
         ticket.source_data = {'origin': 'hackathon_result_v1', 'synthetic': True}
         ticket.save(update_fields=['source_record_id', 'source_data'])

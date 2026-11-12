@@ -161,7 +161,9 @@ def _number_collision(error: IntegrityError) -> bool:
 
 
 @transaction.atomic
-def create_ticket(*, actor, data: dict, idempotency_key: str) -> Ticket:
+def create_ticket(*, actor, data: dict, idempotency_key: str, number: str | None = None) -> Ticket:
+    # `number` is for trusted fixtures only (readable demo numbers); user-facing
+    # submissions always receive a random public number.
     _authorized_actor(actor)
     key = str(idempotency_key or "").strip()
     if not key or len(key) > 128:
@@ -204,15 +206,15 @@ def create_ticket(*, actor, data: dict, idempotency_key: str) -> Ticket:
     # A savepoint makes a rare public-number collision retryable without poisoning
     # the surrounding atomic event/outbox/idempotency transaction.
     for attempt in range(5):
-        number = ticket_number()
+        candidate = number or ticket_number()
         try:
             with transaction.atomic():
-                ticket = Ticket.objects.create(number=number, **fields)
+                ticket = Ticket.objects.create(number=candidate, **fields)
             break
         except IntegrityError as exc:
             if not _number_collision(exc):
                 raise
-            if attempt == 4:
+            if number or attempt == 4:
                 raise DomainError("Не удалось выделить номер. Повторите отправку с тем же ключом.", "number_unavailable", 503)
     _new_cycle(ticket, at)
     _emit(ticket,actor,"CREATED","Обращение зарегистрировано",payload={"routing":routing})

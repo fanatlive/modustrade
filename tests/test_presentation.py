@@ -86,6 +86,13 @@ class DemoPresentationTests(TestCase):
         root = Ticket.objects.get(source_record_id='HACKATHON-V1-1')
         self.assertEqual(self.client.get(f'/requests/{root.pk}/demo-result/').status_code, 404)
 
+    def test_demo_cards_have_readable_numbers(self):
+        numbers = dict(Ticket.objects.filter(source_record_id__startswith='HACKATHON-').values_list('source_record_id', 'number'))
+        self.assertEqual(numbers, {f'HACKATHON-V1-{i}': f'MT-D-00{i}' for i in range(1, 6)} | {RESULT_SOURCE: 'MT-D-006'})
+        author = User.objects.get(username='hack_author')
+        self.client.force_login(author)
+        self.assertContains(self.client.get('/'), 'MT-D-006')
+
     def test_repeat_preserves_result_and_deadlines(self):
         before = list(Ticket.objects.order_by('pk').values())
         call_command('load_hackathon_demo', stdout=StringIO())
