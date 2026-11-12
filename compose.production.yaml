@@ -56,6 +56,8 @@ services:
     <<: *app
     restart: unless-stopped
     command: [waitress-serve, --threads=8, --listen=0.0.0.0:8000, --trusted-proxy=*, --trusted-proxy-headers=x-forwarded-proto, 'config.wsgi:application']
+    # The root filesystem is read-only; attachments need their own writable volume.
+    volumes: [production_attachments:/app/media/attachments]
     healthcheck:
       test: [CMD, python, -c, "import os,urllib.request; h=os.getenv('ALLOWED_HOSTS','localhost').split(',')[0].strip().lstrip('.'); h='localhost' if h=='*' else h; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8000/health/',headers={'Host':h}), timeout=3)"]
       interval: 10s
@@ -109,3 +111,4 @@ services:
     logging: *logs
 volumes:
   production_data:
+  production_attachments:

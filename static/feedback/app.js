@@ -113,6 +113,17 @@ document.addEventListener("DOMContentLoaded", () => {
     solution?.addEventListener("input", lookup);
     lookup();
   }
+  // Show which files are queued on the visually compact comment picker.
+  document.querySelectorAll("[data-file-input]").forEach((input) => {
+    const note = input.parentElement?.querySelector("[data-file-names]");
+    if (!note) return;
+    const defaultText = note.textContent;
+    input.addEventListener("change", () => {
+      const names = [...input.files].map((file) => file.name);
+      note.textContent = names.length ? `Выбрано: ${names.join(", ")}` : defaultText;
+      note.classList.toggle("has-files", names.length > 0);
+    });
+  });
   document.querySelectorAll("[data-dismiss-alert]").forEach((button) => {
     button.addEventListener("click", () => button.closest(".alert")?.remove());
   });

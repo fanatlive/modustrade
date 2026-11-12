@@ -4,7 +4,7 @@ Runtime validation and authorization remain in the transactional service.
 Optional fields are command-dependent, as documented in docs/command-matrix.md.
 """
 from datetime import datetime
-from typing import Literal, TypedDict
+from typing import Any, Literal, TypedDict
 
 CommandName = Literal['start', 'acknowledge', 'assign', 'approve', 'decline', 'ask_info', 'answer_info',
                       'resume_info', 'extend_info', 'comment', 'implement', 'withdraw',
@@ -27,6 +27,7 @@ class CommandPayload(TypedDict, total=False):
     criteria: str
     result: str
     evidence: str
+    files: list[Any]
 
 
 class AssignmentReview(TypedDict):

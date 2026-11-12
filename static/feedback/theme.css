@@ -245,6 +245,27 @@ input::placeholder,textarea::placeholder{color:#7D8C91}
 .detail-main .similar-hints{margin:0 0 20px}
 @media(max-width:600px){.similar-hints li{flex-direction:column;align-items:flex-start}}
 
+/* Attachments */
+input[type=file]{padding:8px;min-height:auto;background:var(--canvas);border-style:dashed;cursor:pointer}
+input[type=file]::file-selector-button{margin-right:12px;padding:8px 14px;border:1px solid var(--line-strong);border-radius:8px;background:#fff;color:var(--text);font:600 13px Onest,sans-serif;cursor:pointer;transition:border-color .2s var(--ease),color .2s var(--ease)}
+input[type=file]:hover::file-selector-button{border-color:var(--teal);color:var(--teal)}
+.attachment-list{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:10px}
+.attachment-item{display:flex;align-items:center;gap:10px;max-width:320px;padding:8px 12px 8px 8px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--text);text-decoration:none;box-shadow:var(--shadow-xs);transition:border-color .2s var(--ease),box-shadow .2s var(--ease),transform .2s var(--ease)}
+.attachment-item:hover{border-color:rgba(11,110,102,.45);box-shadow:var(--shadow-sm);transform:translateY(-1px);color:var(--text)}
+.attachment-thumb{width:44px;height:44px;object-fit:cover;border-radius:8px;background:var(--canvas);flex:none}
+.attachment-icon{width:44px;height:44px;border-radius:8px;background:var(--teal-soft);color:var(--teal);display:grid;place-items:center;flex:none}
+.attachment-meta{display:flex;flex-direction:column;min-width:0}
+.attachment-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.attachment-size{font-size:12px;color:var(--muted)}
+.comment-internal .attachment-item{background:#FFFDF8}
+.file-picker{display:inline-flex;align-items:center;gap:8px;margin-top:10px;min-height:36px;padding:0 12px;border-radius:999px;border:1px dashed var(--line-strong);color:var(--text-2);font-size:13px;font-weight:600;cursor:pointer;transition:border-color .2s var(--ease),color .2s var(--ease),background .2s var(--ease)}
+.file-picker .icon{width:16px;height:16px}
+.file-picker:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-tint)}
+.file-input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.comment-form:has(.file-input:focus-visible) .file-picker{outline:2px solid var(--teal);outline-offset:3px}
+.file-help{display:block;margin-top:6px}
+.file-help.has-files{color:var(--teal-dark);font-weight:600}
+
 /* ---------- Detail ---------- */
 .detail-heading h1{font-size:30px;line-height:1.2;letter-spacing:-.02em;margin-bottom:14px}
 .detail-heading>.ticket-meta{font-size:13px}

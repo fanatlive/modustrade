@@ -40,6 +40,8 @@ services:
       POSTGRES_USER: ${APP_DB_USER:-modus_runtime}
       POSTGRES_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in .env}
     command: waitress-serve --listen=0.0.0.0:8000 config.wsgi:application
+    volumes:
+      - attachments_data:/app/media/attachments
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
@@ -96,3 +98,4 @@ services:
       retries: 2
 volumes:
   postgres_data:
+  attachments_data:

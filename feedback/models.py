@@ -391,3 +391,41 @@ class WorkerHeartbeat(models.Model):
     last_seen = models.DateTimeField(default=timezone.now)
     last_error = models.CharField(max_length=500, blank=True)
     last_counts = models.JSONField(default=dict, blank=True)
+
+
+def attachment_storage():
+    # Callable so tests and deployments can point ATTACHMENTS_ROOT elsewhere.
+    from django.conf import settings
+    from django.core.files.storage import FileSystemStorage
+    return FileSystemStorage(location=settings.ATTACHMENTS_ROOT, base_url=None)
+
+
+def attachment_path(instance, filename):
+    # Random on-disk names: the original name is metadata only, never a path.
+    return f"{instance.ticket_id.hex[:2]}/{uuid.uuid4().hex}"
+
+
+class Attachment(models.Model):
+    """A file added at submission or to a conversation message.
+
+    Visibility follows its message: internal files are never shown to the author.
+    Access is always checked through the ticket; there is no public URL.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="attachments")
+    comment = models.ForeignKey(Comment, null=True, blank=True, on_delete=models.CASCADE, related_name="attachments")
+    uploaded_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    visibility = models.CharField(max_length=10, choices=Comment.Visibility.choices, default=Comment.Visibility.PUBLIC)
+    file = models.FileField(upload_to=attachment_path, storage=attachment_storage, max_length=200)
+    original_name = models.CharField(max_length=160)
+    content_type = models.CharField(max_length=100)
+    size = models.PositiveIntegerField()
+    sha256 = models.CharField(max_length=64)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["created_at", "original_name"]
+
+    @property
+    def is_image(self) -> bool:
+        return self.content_type in {"image/png", "image/jpeg", "image/webp"}

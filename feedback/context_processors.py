@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.urls import reverse
 
+from .attachments import ACCEPT_ATTRIBUTE
+from .forms import attachment_help
 from .permissions import can_coordinate, has_role, visible_notifications
 
 
@@ -17,4 +19,6 @@ def workspace(request):
         "is_operator": authenticated and (user.is_superuser or has_role(user, "processor", "coordinator", "manager")),
         "can_manage_deliveries": authenticated and can_coordinate(user),
         "current_path": request.path,
+        "attachment_help": attachment_help(),
+        "attachment_accept": ACCEPT_ATTRIBUTE,
     }

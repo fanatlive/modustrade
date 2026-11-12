@@ -9,6 +9,7 @@ urlpatterns = [
     path("queue/", views.work_queue, name="queue"),
     path("requests/new/", views.ticket_create, name="create"),
     path("requests/similar-preview/", views.similar_preview, name="similar_preview"),
+    path("attachments/<uuid:pk>/", views.attachment_download, name="attachment"),
     path("requests/<uuid:pk>/", views.ticket_detail, name="detail"),
     path("requests/<uuid:pk>/command/", views.ticket_command, name="command"),
     path("requests/<uuid:pk>/canonical/", views.canonical_search, name="canonical_search"),

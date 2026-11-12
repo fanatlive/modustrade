@@ -8,6 +8,9 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.db.models import Q
 from django.utils import timezone
 
+from django.conf import settings
+
+from .attachments import ACCEPT_ATTRIBUTE, ALLOWED_LABEL
 from .models import Category, OrgUnit, Queue, RoutingRule, User
 
 
@@ -22,6 +25,29 @@ class LoginForm(AuthenticationForm):
     error_messages = {"invalid_login": "Не удалось войти. Проверьте имя пользователя и пароль.", "inactive": "Учётная запись отключена. Обратитесь к администратору."}
 
 
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    """Returns a list; content checks happen in the transactional service."""
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput(attrs={"accept": ACCEPT_ATTRIBUTE}))
+        kwargs.setdefault("required", False)
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        single = super().clean
+        if isinstance(data, (list, tuple)):
+            return [single(item, initial) for item in data if item]
+        return [single(data, initial)] if data else []
+
+
+def attachment_help() -> str:
+    return (f"До {settings.ATTACHMENT_MAX_FILES} файлов, каждый до {settings.ATTACHMENT_MAX_BYTES // (1024 * 1024)} МБ: "
+            f"{ALLOWED_LABEL}. Скриншот или пример часто объясняет быстрее текста.")
+
+
 class CreateTicketForm(forms.Form):
     request_type = forms.ChoiceField(label="Тип обращения", choices=TYPES, initial="SUGGESTION")
     category = forms.ModelChoiceField(label="Категория", queryset=Category.objects.none(), empty_label="Выберите категорию")
@@ -30,6 +56,7 @@ class CreateTicketForm(forms.Form):
     affected_unit = forms.ModelChoiceField(label="К какому подразделению относится вопрос?", queryset=OrgUnit.objects.none(), required=False, empty_label="Не знаю / несколько подразделений")
     reported_priority = forms.ChoiceField(label="Приоритет", choices=PRIORITIES, initial="MEDIUM")
     confidentiality = forms.ChoiceField(label="Доступ к обращению", choices=[("STANDARD", "Обычное — автор и ответственные"), ("RESTRICTED", "Конфиденциальное — только сотрудники с допуском")])
+    attachments = MultipleFileField(label="Материалы")
     idempotency_key = forms.UUIDField(widget=forms.HiddenInput)
 
     def __init__(self, *args, **kwargs):

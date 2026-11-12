@@ -18,6 +18,7 @@ from django.db.models.functions import Cast
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
+from .attachments import AttachmentError, check_uploads, store_uploads
 from .contracts import AssignmentReview, CommandName, CommandPayload
 from .models import (Category, Comment, Decision, Event, IdempotencyRecord, InfoRequest,
                      Notification, OrgUnit, Outbox, ProcessingCycle, Queue, RoutingRule,
@@ -161,7 +162,7 @@ def _number_collision(error: IntegrityError) -> bool:
 
 
 @transaction.atomic
-def create_ticket(*, actor, data: dict, idempotency_key: str, number: str | None = None) -> Ticket:
+def create_ticket(*, actor, data: dict, idempotency_key: str, number: str | None = None, files: list[Any] | None = None) -> Ticket:
     # `number` is for trusted fixtures only (readable demo numbers); user-facing
     # submissions always receive a random public number.
     _authorized_actor(actor)
@@ -178,6 +179,10 @@ def create_ticket(*, actor, data: dict, idempotency_key: str, number: str | None
         if previous.payload_hash != fingerprint:
             raise ConflictError("Этот ключ отправки уже использован для другого содержимого.")
         return previous.ticket
+    try:
+        uploads = check_uploads(files)
+    except AttachmentError as exc:
+        raise DomainError(str(exc), "attachment_invalid")
     try:
         category = Category.objects.get(pk=getattr(data.get("category"), "pk", data.get("category")), active=True)
     except (Category.DoesNotExist, ValueError, TypeError):
@@ -217,8 +222,10 @@ def create_ticket(*, actor, data: dict, idempotency_key: str, number: str | None
             if number or attempt == 4:
                 raise DomainError("Не удалось выделить номер. Повторите отправку с тем же ключом.", "number_unavailable", 503)
     _new_cycle(ticket, at)
-    _emit(ticket,actor,"CREATED","Обращение зарегистрировано",payload={"routing":routing})
+    _emit(ticket,actor,"CREATED","Обращение зарегистрировано",payload={"routing":routing,"attachments":len(uploads)})
     IdempotencyRecord.objects.create(actor=actor,key=key,payload_hash=fingerprint,ticket=ticket)
+    # Files are written last so a failed validation or conflict above stores nothing.
+    store_uploads(ticket, actor, uploads)
     return ticket
 
 
@@ -347,6 +354,13 @@ def execute_command(*, actor: User, ticket_id: Any, command: CommandName | str, 
     allowed = {"start","assign","approve","decline","acknowledge","ask_info","answer_info","resume_info","extend_info","implement","reopen","withdraw","duplicate","no_response","comment","reclassify"}
     if command not in allowed:
         raise DomainError("Неизвестное действие.")
+    files = data.get("files") or []
+    if files and command != "comment":
+        raise DomainError("Файлы можно приложить только к сообщению.", "attachment_invalid")
+    try:
+        uploads = check_uploads(files)
+    except AttachmentError as exc:
+        raise DomainError(str(exc), "attachment_invalid")
     if command in COMMAND_TYPE_MATRIX and ticket.request_type not in COMMAND_TYPE_MATRIX[command]:
         raise DomainError("Действие не предусмотрено для этого типа обращения.", "invalid_type_command")
     if ticket.status == Ticket.Status.CLOSED and command != "reopen":
@@ -513,7 +527,10 @@ def execute_command(*, actor: User, ticket_id: Any, command: CommandName | str, 
             raise PermissionDenied("Нет доступа к внутренним заметкам.")
         if actor.pk != ticket.author_id and not processing:
             raise PermissionDenied("Нет права добавлять сообщение.")
-        Comment.objects.create(ticket=ticket,author=actor,message=_text(data,"message","Сообщение"),visibility=visibility)
+        comment = Comment.objects.create(ticket=ticket,author=actor,message=_text(data,"message","Сообщение"),visibility=visibility)
+        store_uploads(ticket, actor, uploads, visibility=visibility, comment=comment)
+        if uploads:
+            payload["attachments"] = len(uploads)
         if visibility == "public":
             _first_response(ticket,actor)
         summary = "Добавлена внутренняя заметка" if visibility == "internal" else "Добавлено сообщение"

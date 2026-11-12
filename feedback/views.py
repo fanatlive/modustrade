@@ -14,14 +14,14 @@ from django.db import connection, transaction
 from django.db.models import Aggregate, Avg, BigIntegerField, BooleanField, Case, CharField, Count, DateTimeField, DurationField, ExpressionWrapper, F, Max, OuterRef, Q, Subquery, Value, When
 from django.db.models.functions import Cast, Coalesce, NullIf
 from django.db.models.fields.json import KeyTextTransform
-from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import AnalyticsFilterForm, CategoryForm, CommandForm, CreateTicketForm, PRIORITIES, QueueForm, RetryDeliveryForm, RoutingRuleForm, STATUSES, TYPES, TicketFilterForm
-from .models import Category, Event, InfoRequest, Notification, OrgUnit, Outbox, ProcessingCycle, Queue, RoutingRule, Ticket, TicketRelation, User
+from .models import Attachment, Category, Event, InfoRequest, Notification, OrgUnit, Outbox, ProcessingCycle, Queue, RoutingRule, Ticket, TicketRelation, User
 from .permissions import can_coordinate, can_process, can_view_internal, has_role, operational_users, staff_scope, visible_notifications, visible_tickets
 from .services import COMMAND_TYPE_MATRIX, DomainError, create_ticket, execute_command
 from .search import scoped_search, similar_tickets, suggest_similar
@@ -88,14 +88,15 @@ def work_queue(request):
 def ticket_create(request):
     preset_type = request.GET.get("type")
     initial = {"request_type": preset_type} if preset_type in {"PROBLEM", "SUGGESTION", "PRAISE"} else None
-    form = CreateTicketForm(request.POST or None, initial=initial)
+    form = CreateTicketForm(request.POST or None, request.FILES or None, initial=initial)
     status = 200
     if request.method == "POST":
         if form.is_valid():
             data = dict(form.cleaned_data)
             key = str(data.pop("idempotency_key"))
+            files = data.pop("attachments", [])
             try:
-                ticket = create_ticket(actor=request.user, data=data, idempotency_key=key)
+                ticket = create_ticket(actor=request.user, data=data, idempotency_key=key, files=files)
             except DomainError as exc:
                 form.add_error(None, str(exc))
                 status = getattr(exc, "status", 422)
@@ -124,7 +125,7 @@ def _detail(request, pk, *, error=None, status=200, command_form=None):
     linked_parent = relations.filter(ticket=ticket).select_related("canonical").first()
     linked_children = Paginator(relations.filter(canonical=ticket).select_related("ticket").order_by("ticket__number"), 10).get_page(request.GET.get("related_page"))
     internal = can_view_internal(request.user, ticket)
-    comments = ticket.comments.select_related("author")
+    comments = ticket.comments.select_related("author").prefetch_related("attachments")
     events = ticket.events.select_related("actor")
     if not internal:
         comments = comments.filter(visibility="public")
@@ -172,6 +173,7 @@ def _detail(request, pk, *, error=None, status=200, command_form=None):
         candidates = candidates.order_by("number")
     canonical_page = Paginator(candidates, 25).get_page(request.GET.get("canonical_page"))
     return render(request, "feedback/detail.html", {
+        "ticket_files": ticket.attachments.filter(comment__isnull=True, visibility="public"),
         "author_summary": summary, "possible_repeats": possible_repeats, "demo_result_available": settings.DEMO_MODE and has_demo_result(ticket),
         "linked_parent": linked_parent, "linked_children": linked_children,
         "related_navigation": _history_navigation(request, linked_children, "related_page", "related", "Связанные обращения", ticket.pk),
@@ -214,6 +216,8 @@ def ticket_command(request, pk):
     command, version = data.pop("command"), data.pop("version")
     # Omit empty optional values so domain defaults (e.g. five-day wait) apply.
     data = {key: value for key, value in data.items() if value is not None and value != ""}
+    if command == "comment" and request.FILES:
+        data["files"] = request.FILES.getlist("attachments")
     if command == "answer_info" and data.get("response"):
         data.setdefault("message", data["response"])
     try:
@@ -475,6 +479,27 @@ def canonical_search(request, pk):
     params = request.GET.copy()
     params.pop("page", None)
     return render(request, "feedback/canonical_search.html", {"ticket": ticket, "page_obj": page, "q": query, "querystring": params.urlencode(), "active_nav": "list"})
+
+
+@login_required
+def attachment_download(request, pk):
+    """Serve a file only to people who may open its ticket (and its message)."""
+    attachment = get_object_or_404(Attachment.objects.select_related("ticket"), pk=pk,
+        ticket__in=visible_tickets(request.user).values("pk"))
+    if attachment.visibility == "internal" and not can_view_internal(request.user, attachment.ticket):
+        raise Http404
+    try:
+        handle = attachment.file.open("rb")
+    except FileNotFoundError:
+        raise Http404
+    inline = attachment.is_image and request.GET.get("inline") == "1"
+    response = FileResponse(handle, as_attachment=not inline, filename=attachment.original_name,
+        content_type=attachment.content_type)
+    # Even a disguised file cannot run script in the app's origin.
+    response["Content-Security-Policy"] = "default-src 'none'; img-src 'self'; sandbox"
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @login_required
