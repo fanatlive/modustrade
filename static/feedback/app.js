@@ -59,6 +59,60 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 250);
     });
   });
+  // Live "similar requests" hints on the create form. Results come from the
+  // user's own access scope; the form submits normally without them.
+  const hints = document.querySelector("[data-similar-hints]");
+  const description = document.querySelector("#id_description");
+  if (hints && description) {
+    const list = hints.querySelector("[data-similar-list]");
+    const solution = document.querySelector("#id_proposed_solution");
+    let timer, controller, lastText = "";
+    const render = (results) => {
+      list.replaceChildren(...results.map((item) => {
+        const li = document.createElement("li");
+        const link = document.createElement("a");
+        link.href = item.url;
+        link.target = "_blank";
+        link.rel = "noopener";
+        const number = document.createElement("span");
+        number.className = "similar-number";
+        number.textContent = item.number;
+        const title = document.createElement("span");
+        title.className = "similar-title";
+        title.textContent = item.title;
+        link.append(number, title);
+        const badge = document.createElement("span");
+        badge.className = `status-badge status-${item.status}`;
+        badge.append(document.createElement("i"), item.status_label);
+        li.append(link, badge);
+        return li;
+      }));
+      hints.hidden = results.length === 0;
+    };
+    const lookup = () => {
+      const text = `${description.value} ${solution?.value || ""}`.trim();
+      if (text === lastText) return;
+      lastText = text;
+      clearTimeout(timer);
+      controller?.abort();
+      if (text.length < 20) { render([]); return; }
+      timer = setTimeout(async () => {
+        controller = new AbortController();
+        try {
+          const url = new URL(hints.dataset.endpoint, window.location.origin);
+          url.searchParams.set("text", text.slice(0, 2000));
+          const response = await fetch(url, {headers: {Accept: "application/json"}, signal: controller.signal});
+          if (!response.ok) throw new Error("similar unavailable");
+          render((await response.json()).results);
+        } catch (error) {
+          if (error.name !== "AbortError") render([]);
+        }
+      }, 500);
+    };
+    description.addEventListener("input", lookup);
+    solution?.addEventListener("input", lookup);
+    lookup();
+  }
   document.querySelectorAll("[data-dismiss-alert]").forEach((button) => {
     button.addEventListener("click", () => button.closest(".alert")?.remove());
   });

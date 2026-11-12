@@ -229,6 +229,22 @@ input::placeholder,textarea::placeholder{color:#7D8C91}
 .privacy-note strong{font-size:14px;color:var(--text)}
 .privacy-note p{font-size:13px;line-height:1.55}
 
+/* Similar-request hints on the create form and the handler's card */
+.similar-hints{margin-top:16px;padding:16px 18px;border-radius:12px;background:#F7FAFE;border:1px solid #C9DCF7;animation:mt-rise .35s var(--ease-out) both}
+.similar-hints-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;color:var(--blue)}
+.similar-hints-head .icon{width:18px;height:18px}
+.similar-hints h3,.similar-hints h2{margin:0;font-size:15px;color:var(--text)}
+.similar-hints ul{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}
+.similar-hints li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:10px;background:#fff;border:1px solid var(--line);transition:border-color .2s var(--ease),box-shadow .2s var(--ease),transform .2s var(--ease)}
+.similar-hints li:hover{border-color:rgba(29,78,216,.35);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+.similar-hints li a{display:flex;flex-direction:column;gap:2px;min-width:0;color:var(--text);text-decoration:none}
+.similar-hints li a:hover .similar-title{color:var(--teal)}
+.similar-number{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;color:var(--muted)}
+.similar-title{font-size:14px;font-weight:600;line-height:1.4;overflow-wrap:anywhere;transition:color .2s var(--ease)}
+.similar-hints .field-help{margin:0}
+.detail-main .similar-hints{margin:0 0 20px}
+@media(max-width:600px){.similar-hints li{flex-direction:column;align-items:flex-start}}
+
 /* ---------- Detail ---------- */
 .detail-heading h1{font-size:30px;line-height:1.2;letter-spacing:-.02em;margin-bottom:14px}
 .detail-heading>.ticket-meta{font-size:13px}

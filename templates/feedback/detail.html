@@ -11,6 +11,7 @@
 {% if ticket.quality_flags %}<div class="alert alert-warning">{% include 'partials/icon.html' with icon='alert' %}<div><strong>Исходные сведения требуют проверки</strong><ul>{% for flag in ticket.quality_flags %}<li>{{ flag }}</li>{% endfor %}</ul></div></div>{% endif %}
 {% if is_author %}{% include 'feedback/partials/author_overview.html' %}{% endif %}
 <div class="detail-layout"><div class="detail-main">
+{% include 'feedback/partials/detail_repeats.html' %}
 {% include 'feedback/partials/detail_summary.html' %}
 {% include 'feedback/partials/detail_related.html' %}
 {% include 'feedback/partials/detail_conversation.html' %}

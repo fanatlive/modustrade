@@ -21,10 +21,10 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import AnalyticsFilterForm, CategoryForm, CommandForm, CreateTicketForm, PRIORITIES, QueueForm, RetryDeliveryForm, RoutingRuleForm, STATUSES, TYPES, TicketFilterForm
-from .models import Category, Event, InfoRequest, Notification, OrgUnit, Outbox, ProcessingCycle, Queue, RoutingRule, Ticket, User
+from .models import Category, Event, InfoRequest, Notification, OrgUnit, Outbox, ProcessingCycle, Queue, RoutingRule, Ticket, TicketRelation, User
 from .permissions import can_coordinate, can_process, can_view_internal, has_role, operational_users, staff_scope, visible_notifications, visible_tickets
 from .services import COMMAND_TYPE_MATRIX, DomainError, create_ticket, execute_command
-from .search import scoped_search, similar_tickets
+from .search import scoped_search, similar_tickets, suggest_similar
 from .recurrence import recurring_tickets, visible_relations
 from .forms import RecurrenceFilterForm
 from .presentation import author_summary, has_demo_result, RESULT_SOURCE
@@ -146,6 +146,12 @@ def _detail(request, pk, *, error=None, status=200, command_form=None):
     current_cycle = next((cycle for cycle in cycles if cycle.number == ticket.cycle_no), None) or ticket.current_cycle
     active_info = ticket.info_requests.filter(answered_at__isnull=True).first()
     summary = author_summary(ticket, current_cycle, active_info)
+    possible_repeats = []
+    if ticket.status != "CLOSED" and not linked_parent and (can_process(request.user, ticket) or can_coordinate(request.user, ticket)):
+        linked = TicketRelation.objects.filter(Q(ticket=ticket) | Q(canonical=ticket), active=True)
+        excluded = {ticket.pk, *linked.values_list("ticket_id", flat=True), *linked.values_list("canonical_id", flat=True)}
+        possible_repeats = suggest_similar(visible_tickets(request.user).exclude(pk__in=excluded).exclude(duplicate_relations__active=True),
+            f"{ticket.description} {ticket.proposed_solution}", limit=3)
     decisions = list(ticket.decisions.filter(cycle_no=ticket.cycle_no).select_related("actor").order_by("created_at"))
     cycle_decisions = list(ticket.decisions.filter(cycle_no__in=cycle_numbers).select_related("actor").order_by("created_at"))
     implementations = events.filter(kind="IMPLEMENT", payload__cycle_no__in=cycle_numbers)
@@ -166,7 +172,7 @@ def _detail(request, pk, *, error=None, status=200, command_form=None):
         candidates = candidates.order_by("number")
     canonical_page = Paginator(candidates, 25).get_page(request.GET.get("canonical_page"))
     return render(request, "feedback/detail.html", {
-        "author_summary": summary, "demo_result_available": settings.DEMO_MODE and has_demo_result(ticket),
+        "author_summary": summary, "possible_repeats": possible_repeats, "demo_result_available": settings.DEMO_MODE and has_demo_result(ticket),
         "linked_parent": linked_parent, "linked_children": linked_children,
         "related_navigation": _history_navigation(request, linked_children, "related_page", "related", "Связанные обращения", ticket.pk),
         "ticket": ticket, "comments": comments, "events": events.order_by("-sequence"),
@@ -469,6 +475,15 @@ def canonical_search(request, pk):
     params = request.GET.copy()
     params.pop("page", None)
     return render(request, "feedback/canonical_search.html", {"ticket": ticket, "page_obj": page, "q": query, "querystring": params.urlencode(), "active_nav": "list"})
+
+
+@login_required
+def similar_preview(request):
+    """Live hints for the create form; only tickets the user may already open."""
+    text = request.GET.get("text", "")[:2000]
+    items = suggest_similar(visible_tickets(request.user).exclude(duplicate_relations__active=True), text) if len(text.strip()) >= 20 else []
+    return JsonResponse({"results": [{"number": item.number, "title": item.title, "status": item.status,
+        "status_label": item.status_label, "url": reverse("feedback:detail", args=[item.pk])} for item in items]})
 
 
 @login_required
