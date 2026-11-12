@@ -289,7 +289,7 @@ input::placeholder,textarea::placeholder{color:#7D8C91}
 .progress-steps li{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:6px}
 .progress-bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden;position:relative}
 .progress-bar:after{content:"";position:absolute;inset:0;border-radius:inherit;transform-origin:left;transform:scaleX(0)}
-.step-done .progress-bar:after{background:var(--teal);animation:mt-grow-x .55s var(--ease-out) both}
+.step-done .progress-bar:after{background:var(--teal);transform:scaleX(1);animation:mt-grow-x .55s var(--ease-out) both}
 .step-current .progress-bar:after{background:var(--teal);opacity:.55;animation:mt-grow-x .55s var(--ease-out) both;transform:scaleX(.5)}
 .step-waiting .progress-bar:after{background:var(--amber);opacity:1}
 .step-skipped .progress-bar{background:repeating-linear-gradient(90deg,var(--line) 0 6px,transparent 6px 10px)}
