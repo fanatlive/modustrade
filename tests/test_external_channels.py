@@ -14,6 +14,11 @@ from feedback.services import create_ticket, execute_command, process_outbox
 
 TG = {"TELEGRAM_BOT_TOKEN": "123:test-token", "TELEGRAM_BOT_USERNAME": "modus_test_bot"}
 BX = {"BITRIX24_WEBHOOK_URL": "https://portal.example/rest/1/secret"}
+# Pages render without collectstatic (CI runs tests before it).
+PLAIN_STATIC = override_settings(STORAGES={
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+})
 
 
 class FakeHttp:
@@ -31,6 +36,7 @@ class FakeHttp:
         return [m for m, _ in self.calls]
 
 
+@PLAIN_STATIC
 class ExternalChannelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -168,6 +174,7 @@ class ExternalChannelTests(TestCase):
         self.assertGreater(delivery.next_attempt_at, timezone.now())
 
 
+@PLAIN_STATIC
 class NotificationSettingsViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):

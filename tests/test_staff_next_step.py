@@ -1,12 +1,19 @@
 """The processor's "next step" panel keeps the main decision visible and the page quiet."""
 from uuid import uuid4
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from feedback.models import Category, Queue, User
 from feedback.services import create_ticket, execute_command
 
+# Pages render without collectstatic (CI runs tests before it).
+PLAIN_STATIC = override_settings(STORAGES={
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+})
 
+
+@PLAIN_STATIC
 class StaffNextStepTests(TestCase):
     @classmethod
     def setUpTestData(cls):
