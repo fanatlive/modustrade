@@ -13,7 +13,7 @@
 <div class="app-shell">
   <aside class="sidebar" id="sidebar" aria-label="Основная навигация">
     <a class="brand" href="{% url 'feedback:list' %}"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 26V6h5l7 12 7-12h5v20h-5V15l-7 11-7-11v11z" fill="currentColor"/></svg></span><span>Модус Трейд<small>Обратная связь</small></span></a>
-    <div class="workspace-label"><span class="live-dot"></span> Пространство сотрудников</div>
+    
     <nav class="main-nav">
       <a href="{% url 'feedback:list' %}" class="nav-link {% if active_nav == 'list' %}active{% endif %}" {% if active_nav == 'list' %}aria-current="page"{% endif %}>{% include 'partials/icon.html' with icon='inbox' %}<span>Все обращения</span></a>
       {% if is_operator %}<a href="{% url 'feedback:queue' %}" class="nav-link {% if active_nav == 'queue' %}active{% endif %}" {% if active_nav == 'queue' %}aria-current="page"{% endif %}>{% include 'partials/icon.html' with icon='layers' %}<span>Моя очередь</span></a>{% endif %}
@@ -24,17 +24,17 @@
       {% if can_manage_settings %}<a href="{% url 'feedback:settings' %}" class="nav-link {% if active_nav == 'settings' %}active{% endif %}" {% if active_nav == 'settings' %}aria-current="page"{% endif %}>{% include 'partials/icon.html' with icon='settings' %}<span>Настройки</span></a>{% endif %}
     </nav>
     <div class="sidebar-bottom">
-      <div class="sidebar-note">Улучшения начинаются<br>с вашего предложения.</div>
+      
       <div class="profile"><span class="avatar">{{ user.get_full_name|default:user.username|slice:':1' }}</span><span class="profile-text"><strong>{{ user.get_full_name|default:user.username }}</strong><small>{{ user.role_label }}</small></span><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="icon-button logout" aria-label="Выйти" title="Выйти">{% include 'partials/icon.html' with icon='logout' %}</button></form></div>
     </div>
   </aside>
   <div class="sidebar-shade" data-close-menu></div>
   <div class="workspace">
-    <header class="topbar"><div class="topbar-left"><button type="button" class="icon-button menu-button" data-menu-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Открыть меню">{% include 'partials/icon.html' with icon='menu' %}</button><span>Рабочее пространство</span><span class="breadcrumb-separator">/</span><strong>{% block breadcrumb %}Обратная связь{% endblock %}</strong></div><div class="topbar-right">{% if demo_mode %}<a class="demo-indicator demo-link" href="{% url 'feedback:demo' %}" title="Сценарий показа: готовые карточки для демонстрации"{% if active_nav == 'demo' %} aria-current="page"{% endif %}><span></span>Демо-стенд<span class="sr-only">: сценарий показа</span></a>{% endif %}<a class="icon-button notification-link" href="{% url 'feedback:notifications' %}" aria-label="Уведомления{% if unread_notifications %}: {{ unread_notifications }} непрочитанных{% endif %}">{% include 'partials/icon.html' with icon='bell' %}{% if unread_notifications %}<i class="notification-dot"></i>{% endif %}</a></div></header>
+    <header class="topbar"><div class="topbar-left"><button type="button" class="icon-button menu-button" data-menu-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Открыть меню">{% include 'partials/icon.html' with icon='menu' %}</button></div><div class="topbar-right">{% if demo_mode %}<a class="demo-indicator demo-link" href="{% url 'feedback:demo' %}" title="Сценарий показа: готовые карточки для демонстрации"{% if active_nav == 'demo' %} aria-current="page"{% endif %}><span></span>Демо-стенд<span class="sr-only">: сценарий показа</span></a>{% endif %}<a class="icon-button notification-link" href="{% url 'feedback:notifications' %}" aria-label="Уведомления{% if unread_notifications %}: {{ unread_notifications }} непрочитанных{% endif %}">{% include 'partials/icon.html' with icon='bell' %}{% if unread_notifications %}<i class="notification-dot"></i>{% endif %}</a></div></header>
     <main id="main" class="main-content">
-      {% if messages %}<div class="message-stack" aria-live="polite">{% for message in messages %}<div class="alert alert-{{ message.tags }}">{% include 'partials/icon.html' with icon='check' %}<span>{{ message }}</span><button type="button" class="icon-button" data-dismiss-alert aria-label="Закрыть уведомление">{% include 'partials/icon.html' with icon='x' %}</button></div>{% endfor %}</div>{% endif %}
+      {% if messages %}<div class="message-stack" aria-live="polite">{% for message in messages %}{% if message.level >= 30 and "inline" not in message.tags %}<div class="alert alert-{{ message.level_tag }}">{% include 'partials/icon.html' with icon='alert' %}<span>{{ message }}</span><button type="button" class="icon-button" data-dismiss-alert aria-label="Закрыть уведомление">{% include 'partials/icon.html' with icon='x' %}</button></div>{% endif %}{% endfor %}</div>{% endif %}
       {% block content %}{% endblock %}
-      <footer class="workspace-footer"><span>Модус Трейд · Внутренняя обратная связь</span><span>Ваши идеи имеют значение</span></footer>
+      
     </main>
   </div>
 </div>

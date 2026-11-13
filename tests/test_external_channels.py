@@ -69,6 +69,14 @@ class ExternalChannelTests(TestCase):
         process_outbox()  # idempotent: nothing is sent twice
         self.assertEqual(len(mail.outbox), ExternalDelivery.objects.count())
 
+    def test_notification_list_does_not_repeat_ticket_number(self):
+        ticket = self.approve(self.make_ticket())
+        process_outbox()
+        self.client.force_login(self.author)
+        page = self.client.get(reverse('feedback:notifications')).content.decode()
+        self.assertIn('<p>Предложение одобрено и принято в работу</p>', page)
+        self.assertNotIn(f'<p>{ticket.number}: ', page)
+
     def test_opt_out_and_missing_address_skip_email(self):
         User.objects.filter(pk=self.author.pk).update(notify_email=False)
         self.approve(self.make_ticket())
@@ -177,6 +185,15 @@ class NotificationSettingsViewTests(TestCase):
         self.assertEqual(self.user.email, 'me@example.com')
         self.client.post(url, {'operation': 'test'})
         self.assertEqual([m.to for m in mail.outbox], [['me@example.com']])
+
+    def test_employee_sees_no_admin_setup_hints(self):
+        page = self.client.get(reverse('feedback:notification_settings')).content.decode()
+        self.assertNotIn('TELEGRAM_BOT_TOKEN', page)
+        self.assertNotIn('BITRIX24_WEBHOOK_URL', page)
+        self.assertNotIn('Рабочее пространство', page)  # no breadcrumb bar
+        admin = User.objects.create_user('ext-admin', password='safe-test-password', role='admin')
+        self.client.force_login(admin)
+        self.assertContains(self.client.get(reverse('feedback:notification_settings')), 'TELEGRAM_BOT_TOKEN')
 
     @override_settings(**TG)
     def test_telegram_link_button_shows_deep_link(self):

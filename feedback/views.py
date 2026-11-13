@@ -28,7 +28,8 @@ from .services import COMMAND_TYPE_MATRIX, DomainError, create_ticket, execute_c
 from .search import scoped_search, similar_tickets, suggest_similar
 from .recurrence import recurring_tickets, visible_relations
 from .forms import RecurrenceFilterForm
-from .presentation import author_summary, has_demo_result, RESULT_SOURCE
+from .templatetags.paging import page_links
+from .presentation import author_summary, has_demo_result, staff_summary, RESULT_SOURCE
 
 
 def _overdue_q() -> Q:
@@ -115,9 +116,7 @@ def _history_navigation(request, page, parameter, anchor, label, ticket_id):
         params = request.GET.copy()
         params[parameter] = number
         return reverse("feedback:detail", args=[ticket_id]) + "?" + params.urlencode() + "#" + anchor
-    return {"page": page.number, "pages": page.paginator.num_pages, "label": label,
-        "previous": url(page.previous_page_number()) if page.has_previous() else None,
-        "next": url(page.next_page_number()) if page.has_next() else None}
+    return {"page": page.number, "pages": page.paginator.num_pages, "label": label, **page_links(page, url)}
 
 
 def _detail(request, pk, *, error=None, status=200, command_form=None):
@@ -173,7 +172,17 @@ def _detail(request, pk, *, error=None, status=200, command_form=None):
     else:
         candidates = candidates.order_by("number")
     canonical_page = Paginator(candidates, 25).get_page(request.GET.get("canonical_page"))
+    processing = can_process(request.user, ticket)
+    coordinating = can_coordinate(request.user, ticket)
+    type_commands = {name for name, types in COMMAND_TYPE_MATRIX.items() if ticket.request_type in types and not (ticket.status == "REVIEW" and ticket.decision == "APPROVED" and name in {"approve", "decline", "acknowledge"})}
+    awaiting_reassignment = bool(current_cycle and current_cycle.policy.get("assignment_resume_status") == "IN_PROGRESS")
+    staff = staff_summary(ticket, current_cycle, active_info, can_coordinate=coordinating, awaiting_reassignment=awaiting_reassignment,
+                          pending_withdraw=pending_withdraw, type_commands=type_commands) if processing and ticket.status != "CLOSED" else None
+    # After a validation error the same action form is rendered open again.
+    open_action = command_form["command"].value() if command_form is not None and error else ""
+    history_open = any(request.GET.get(key) for key in ("events_page", "cycles_page", "info_page"))
     return render(request, "feedback/detail.html", {
+        "staff_summary": staff, "open_action": open_action, "history_open": history_open,
         "ticket_files": ticket.attachments.filter(comment__isnull=True, visibility="public"),
         "author_summary": summary, "possible_repeats": possible_repeats, "demo_result_available": settings.DEMO_MODE and has_demo_result(ticket),
         "linked_parent": linked_parent, "linked_children": linked_children,
@@ -188,9 +197,8 @@ def _detail(request, pk, *, error=None, status=200, command_form=None):
         "decisions": decisions, "cycles": cycles, "cycle": current_cycle,
         "info_request": active_info,
         "info_history": info_page.object_list,
-        "can_process_ticket": can_process(request.user, ticket), "can_coordinate_ticket": can_coordinate(request.user, ticket),
-        "type_commands": {name for name, types in COMMAND_TYPE_MATRIX.items() if ticket.request_type in types and not (ticket.status == "REVIEW" and ticket.decision == "APPROVED" and name in {"approve", "decline", "acknowledge"})},
-        "awaiting_reassignment": bool(current_cycle and current_cycle.policy.get("assignment_resume_status") == "IN_PROGRESS"),
+        "can_process_ticket": processing, "can_coordinate_ticket": coordinating,
+        "type_commands": type_commands, "awaiting_reassignment": awaiting_reassignment,
         "can_view_internal": internal, "is_author": ticket.author_id == request.user.pk,
         "assignees": assignees if internal else User.objects.none(),
         "available_queues": available_queues if internal else Queue.objects.none(),
@@ -482,17 +490,18 @@ def notification_settings(request):
         elif operation == "test":
             outcome = channels.send_test(user)
             if not outcome:
-                messages.error(request, "Нет ни одного подключённого внешнего канала.")
+                messages.error(request, "Нет ни одного включённого канала.", extra_tags="inline")
             for channel, code in outcome.items():
                 label = dict(ExternalDelivery.Channel.choices)[channel]
                 if code == "ok":
-                    messages.success(request, f"{label}: тестовое сообщение отправлено.")
+                    messages.success(request, f"{label}: тестовое сообщение отправлено.", extra_tags="inline")
                 else:
-                    messages.error(request, f"{label}: не удалось отправить ({code}).")
+                    messages.error(request, f"{label}: не удалось отправить ({code}).", extra_tags="inline")
             return redirect("feedback:notification_settings")
     user.refresh_from_db()
     context = {
         "form": form, "active_nav": "notifications",
+        "is_admin": user.is_superuser or has_role(user, "admin"),
         "email_enabled": channels.email_enabled(), "email_to_file": settings.EMAIL_BACKEND.endswith("filebased.EmailBackend"),
         "telegram_enabled": channels.telegram_enabled(), "telegram_link": channels.telegram_link_url(user) if channels.telegram_enabled() else "",
         "bitrix_enabled": channels.bitrix_enabled(), "active_channels": channels.channels_for(user),

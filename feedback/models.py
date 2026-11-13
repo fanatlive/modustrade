@@ -343,6 +343,12 @@ class Notification(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
+    @property
+    def display_message(self):
+        """The ticket number is already shown next to the message; drop the repeated prefix."""
+        prefix = f"{self.ticket.number}: "
+        return self.message[len(prefix):] if self.message.startswith(prefix) else self.message
+
 
 class ExternalDelivery(models.Model):
     """One outbound copy of an in-app notification per external channel."""

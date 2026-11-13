@@ -1,57 +1,78 @@
 {% extends 'base.html' %}
 {% block title %}Каналы уведомлений{% endblock %}
-{% block breadcrumb %}Каналы уведомлений{% endblock %}
 {% block content %}
-<div class="page-heading"><div><h1>Каналы уведомлений</h1><p>Уведомления всегда появляются в системе. Здесь можно дублировать важные события на почту, в Telegram и Битрикс24: регистрацию, решение по обращению, запрос уточнения, результат и нарушение сроков.</p></div><a class="button button-secondary" href="{% url 'feedback:notifications' %}">К уведомлениям</a></div>
-<div class="settings-summary"><span>{% include 'partials/icon.html' with icon='lock' %}Наружу уходят только номер обращения, тип события и ссылка. Текст обращения, заметки и вложения остаются в системе.</span></div>
+<a class="back-link" href="{% url 'feedback:notifications' %}">{% include 'partials/icon.html' with icon='arrow-left' %}К уведомлениям</a>
+<div class="page-heading channels-heading"><div><h1>Каналы уведомлений</h1></div></div>
+<p class="privacy-note">{% include 'partials/icon.html' with icon='lock' %}<span>Наружу уходят только номер обращения, название события и ссылка. Текст обращения, заметки и вложения остаются в системе.</span></p>
 
-<div class="settings-grid">
-<section class="surface settings-section">
-  <div class="section-header"><div><h2>Почта</h2></div>{% if 'email' in active_channels %}<span class="status-badge status-IN_PROGRESS">Подключено</span>{% elif not email_enabled %}<span class="status-badge status-CLOSED">Отключено администратором</span>{% else %}<span class="status-badge status-WAITING_INFO">Укажите адрес</span>{% endif %}</div>
-  {% if email_to_file %}<p class="section-description">SMTP-сервер не настроен: в демо-режиме письма сохраняются в папку <code>.local/sent-emails</code>. Чтобы отправлять настоящие письма, задайте <code>EMAIL_HOST</code> и связанные параметры в <code>.env</code>.</p>{% endif %}
-  <form method="post" class="stack-form" data-submit-form>{% csrf_token %}<input type="hidden" name="operation" value="save">
+<div class="channels-layout">
+  <form method="post" class="surface channel-card" id="channels-form" data-submit-form>{% csrf_token %}<input type="hidden" name="operation" value="save">
+    <h2 class="channel-card-title">Куда присылать</h2>
     {% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors }}</div>{% endif %}
-    <div class="field"><label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>{{ form.email }}{{ form.email.errors }}<span class="field-help">На этот адрес придут письма. По нему же находится ваш аккаунт в Битрикс24.</span></div>
-    <div class="field checkbox-field"><label for="{{ form.notify_email.id_for_label }}">{{ form.notify_email.label }}</label>{{ form.notify_email }}</div>
-    <div class="field checkbox-field"><label for="{{ form.notify_telegram.id_for_label }}">{{ form.notify_telegram.label }}</label>{{ form.notify_telegram }}</div>
-    <div class="field checkbox-field"><label for="{{ form.notify_bitrix.id_for_label }}">{{ form.notify_bitrix.label }}</label>{{ form.notify_bitrix }}</div>
-    <div class="form-actions"><button class="button button-primary" type="submit">Сохранить</button></div>
+
+    <div class="channel-row">
+      <span class="channel-icon">{% include 'partials/icon.html' with icon='mail' %}</span>
+      <div class="channel-body">
+        <div class="channel-name"><strong>Почта</strong>{% if 'email' in active_channels %}<span class="channel-state is-on">Подключено</span>{% elif not email_enabled %}<span class="channel-state">Недоступно</span>{% elif not user.email %}<span class="channel-state is-warn">Нужен адрес</span>{% else %}<span class="channel-state">Выключено</span>{% endif %}</div>
+        {% if email_enabled %}
+        <div class="field channel-field"><label for="{{ form.email.id_for_label }}">Рабочая почта</label>{{ form.email }}{{ form.email.errors }}</div>
+        {% if email_to_file and is_admin %}<p class="channel-hint">SMTP не настроен: письма сохраняются в <code>.local/sent-emails</code>. Задайте <code>EMAIL_HOST</code> в <code>.env</code>.</p>{% endif %}
+        {% else %}<p class="channel-hint">{% if is_admin %}Отключено параметром <code>NOTIFY_EMAIL</code> или не задан <code>EMAIL_HOST</code>.{% else %}Администратор ещё не подключил отправку писем.{% endif %}</p><span hidden>{{ form.email }}</span>{% endif %}
+      </div>
+      {% if email_enabled %}<label class="switch" title="Присылать на почту">{{ form.notify_email }}<span class="sr-only">Присылать на почту</span></label>{% else %}<span hidden>{{ form.notify_email }}</span>{% endif %}
+    </div>
+
+    <div class="channel-row">
+      <span class="channel-icon">{% include 'partials/icon.html' with icon='send' %}</span>
+      <div class="channel-body">
+        <div class="channel-name"><strong>Telegram</strong>{% if 'telegram' in active_channels %}<span class="channel-state is-on">Подключено</span>{% elif not telegram_enabled %}<span class="channel-state">Недоступно</span>{% elif user.telegram_chat_id %}<span class="channel-state">Выключено</span>{% else %}<span class="channel-state is-warn">Не привязан</span>{% endif %}</div>
+        {% if not telegram_enabled %}
+          <p class="channel-hint">{% if is_admin %}Создайте бота у @BotFather и укажите <code>TELEGRAM_BOT_TOKEN</code> в <code>.env</code>.{% else %}Администратор ещё не подключил Telegram-бота.{% endif %}</p>
+        {% elif user.telegram_chat_id %}
+          <p class="channel-hint">Сообщения приходят в чат с ботом. Отписаться можно и командой /stop.</p>
+          <div class="channel-actions"><button class="text-button" type="submit" form="telegram-unlink-form">Отвязать Telegram</button></div>
+        {% elif telegram_link %}
+          <p class="channel-hint">Откройте ссылку и нажмите «Запустить» в Telegram. Ссылка действует 15 минут, после этого обновите страницу.</p>
+          <div class="channel-actions"><a class="button button-primary button-small" href="{{ telegram_link }}" target="_blank" rel="noopener">{% include 'partials/icon.html' with icon='send' %}Открыть Telegram</a><button class="text-button" type="submit" form="telegram-link-form">Новая ссылка</button></div>
+        {% else %}
+          <p class="channel-hint">Бот будет присылать короткое сообщение со ссылкой на обращение.</p>
+          <div class="channel-actions"><button class="button button-secondary button-small" type="submit" form="telegram-link-form">{% include 'partials/icon.html' with icon='send' %}Привязать Telegram</button></div>
+        {% endif %}
+      </div>
+      {% if telegram_enabled and user.telegram_chat_id %}<label class="switch" title="Присылать в Telegram">{{ form.notify_telegram }}<span class="sr-only">Присылать в Telegram</span></label>{% else %}<span hidden>{{ form.notify_telegram }}</span>{% endif %}
+    </div>
+
+    <div class="channel-row">
+      <span class="channel-icon">{% include 'partials/icon.html' with icon='grid' %}</span>
+      <div class="channel-body">
+        <div class="channel-name"><strong>Битрикс24</strong>{% if 'bitrix24' in active_channels %}<span class="channel-state is-on">Подключено</span>{% elif not bitrix_enabled %}<span class="channel-state">Недоступно</span>{% elif not user.email and not user.bitrix_user_id %}<span class="channel-state is-warn">Нужен адрес</span>{% else %}<span class="channel-state">Выключено</span>{% endif %}</div>
+        {% if bitrix_enabled %}
+          <p class="channel-hint">Уведомления приходят в «колокольчик» портала.{% if user.bitrix_user_id %} Аккаунт портала: ID {{ user.bitrix_user_id }}.{% else %} Аккаунт найдётся по рабочей почте.{% endif %}</p>
+        {% else %}
+          <p class="channel-hint">{% if is_admin %}Создайте входящий вебхук с правами <code>user</code> и <code>im</code> и укажите его в <code>BITRIX24_WEBHOOK_URL</code>.{% else %}Администратор ещё не подключил портал.{% endif %}</p>
+        {% endif %}
+      </div>
+      {% if bitrix_enabled %}<label class="switch" title="Присылать в Битрикс24">{{ form.notify_bitrix }}<span class="sr-only">Присылать в Битрикс24</span></label>{% else %}<span hidden>{{ form.notify_bitrix }}</span>{% endif %}
+    </div>
+
+    <div class="channel-card-foot"><button class="button button-primary" type="submit">Сохранить</button></div>
   </form>
-</section>
 
-<section class="surface settings-section">
-  <div class="section-header"><div><h2>Telegram</h2></div>{% if user.telegram_chat_id %}<span class="status-badge status-IN_PROGRESS">Подключено</span>{% elif not telegram_enabled %}<span class="status-badge status-CLOSED">Бот не настроен</span>{% else %}<span class="status-badge status-WAITING_INFO">Не подключено</span>{% endif %}</div>
-  {% if not telegram_enabled %}
-    <p class="section-description">Администратору нужно создать бота у @BotFather и указать <code>TELEGRAM_BOT_TOKEN</code> в <code>.env</code>. Сообщения от бота принимает фоновый обработчик (worker).</p>
-  {% elif user.telegram_chat_id %}
-    <p class="section-description">Уведомления приходят в ваш чат с ботом. Отключить их можно здесь или командой /stop в Telegram.</p>
-    <form method="post">{% csrf_token %}<input type="hidden" name="operation" value="telegram_unlink"><button class="button button-secondary" type="submit">Отключить Telegram</button></form>
-  {% elif telegram_link %}
-    <p class="section-description">Откройте ссылку и нажмите «Запустить» в Telegram. Ссылка действует 15 минут. После подтверждения обновите эту страницу.</p>
-    <div class="form-actions"><a class="button button-primary" href="{{ telegram_link }}" target="_blank" rel="noopener">Открыть Telegram</a>
-    <form method="post">{% csrf_token %}<input type="hidden" name="operation" value="telegram_link"><button class="text-button" type="submit">Новая ссылка</button></form></div>
-  {% else %}
-    <p class="section-description">Привяжите свой Telegram: бот будет присылать короткие уведомления со ссылкой на обращение.</p>
-    <form method="post">{% csrf_token %}<input type="hidden" name="operation" value="telegram_link"><button class="button button-primary" type="submit">Подключить Telegram</button></form>
-  {% endif %}
-</section>
-
-<section class="surface settings-section">
-  <div class="section-header"><div><h2>Битрикс24</h2></div>{% if 'bitrix24' in active_channels %}<span class="status-badge status-IN_PROGRESS">Подключено</span>{% elif not bitrix_enabled %}<span class="status-badge status-CLOSED">Портал не подключён</span>{% else %}<span class="status-badge status-WAITING_INFO">Укажите почту</span>{% endif %}</div>
-  {% if bitrix_enabled %}
-    <p class="section-description">Уведомления приходят в «колокольчик» Битрикс24.{% if user.bitrix_user_id %} Аккаунт портала: ID {{ user.bitrix_user_id }}.{% else %} Аккаунт найдётся по рабочей почте при первой отправке.{% endif %}</p>
-  {% else %}
-    <p class="section-description">Администратору нужно создать на портале входящий вебхук с правами <code>user</code> и <code>im</code> и указать его адрес в <code>BITRIX24_WEBHOOK_URL</code>.</p>
-  {% endif %}
-</section>
-
-<section class="surface settings-section">
-  <div class="section-header"><div><h2>Проверка</h2></div></div>
-  <p class="section-description">Отправить тестовое сообщение во все подключённые каналы прямо сейчас.</p>
-  <form method="post">{% csrf_token %}<input type="hidden" name="operation" value="test"><button class="button button-secondary" type="submit" {% if not active_channels %}disabled{% endif %}>Отправить тест</button></form>
-  {% if recent %}<h3>Последние отправки</h3><div class="table-wrap"><table class="settings-table"><thead><tr><th>Обращение</th><th>Канал</th><th>Состояние</th></tr></thead><tbody>
-  {% for item in recent %}<tr><td>{{ item.outbox.ticket.number|truncatechars:16 }}</td><td>{{ item.get_channel_display }}</td><td>{% if item.state == 'sent' %}Доставлено {{ item.sent_at|date:'d.m H:i' }}{% elif item.state == 'pending' or item.state == 'processing' %}В очереди{% elif item.state == 'skipped' %}Пропущено{% else %}Ошибка{% endif %}{% if item.last_error %}<small class="subtle-text"> · {{ item.last_error }}</small>{% endif %}</td></tr>{% endfor %}
-  </tbody></table></div>{% endif %}
-</section>
+  <section class="surface channel-card channel-check" aria-labelledby="check-title">
+    <h2 class="channel-card-title" id="check-title">Проверка</h2>
+    <p class="channel-hint">Отправим тестовое сообщение во все включённые каналы.</p>
+    <button class="button button-secondary" type="submit" form="test-form" {% if not active_channels %}disabled{% endif %}>{% include 'partials/icon.html' with icon='send' %}Отправить тест</button>
+    {% for message in messages %}{% if "inline" in message.tags %}<p class="test-result{% if message.level >= 40 %} is-error{% endif %}">{% if message.level >= 40 %}{% include 'partials/icon.html' with icon='alert' %}{% else %}{% include 'partials/icon.html' with icon='check' %}{% endif %}{{ message }}</p>{% endif %}{% endfor %}
+    {% if recent %}
+    <h3>Последние отправки</h3>
+    <ul class="delivery-list">
+      {% for item in recent %}<li><div><a href="{% url 'feedback:detail' item.outbox.ticket_id %}">{{ item.outbox.ticket.number }}</a><span>{{ item.get_channel_display }}</span></div>{% if item.state == 'sent' %}<span class="channel-state is-on">Доставлено {{ item.sent_at|date:'d.m H:i' }}</span>{% elif item.state == 'pending' or item.state == 'processing' %}<span class="channel-state">В очереди</span>{% elif item.state == 'skipped' %}<span class="channel-state" title="{{ item.last_error }}">Пропущено</span>{% else %}<span class="channel-state is-error" title="{{ item.last_error }}">Ошибка</span>{% endif %}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </section>
 </div>
+
+<form method="post" id="telegram-link-form" hidden>{% csrf_token %}<input type="hidden" name="operation" value="telegram_link"></form>
+<form method="post" id="telegram-unlink-form" hidden>{% csrf_token %}<input type="hidden" name="operation" value="telegram_unlink"></form>
+<form method="post" id="test-form" hidden>{% csrf_token %}<input type="hidden" name="operation" value="test"></form>
 {% endblock %}
