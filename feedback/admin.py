@@ -1,12 +1,13 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Category, OrgUnit, Queue, RoutingRule, User
+from .models import Category, ExternalDelivery, OrgUnit, Queue, RoutingRule, User
 from .services import revise_routing_rule
 
 
 @admin.register(User)
 class FeedbackUserAdmin(UserAdmin):
-    fieldsets = UserAdmin.fieldsets + (("Рабочие полномочия", {"fields": ("role", "extra_roles", "org_unit", "restricted_access")}),)
+    fieldsets = UserAdmin.fieldsets + (("Рабочие полномочия", {"fields": ("role", "extra_roles", "org_unit", "restricted_access")}),
+                                       ("Внешние уведомления", {"fields": ("notify_email", "notify_telegram", "notify_bitrix", "telegram_chat_id", "bitrix_user_id")}))
     list_display = ("username", "first_name", "last_name", "role", "is_active")
 
 
@@ -43,6 +44,17 @@ class RoutingRuleAdmin(admin.ModelAdmin):
                 obj._state.adding = False
                 return
         super().save_model(request,obj,form,change)
+
+
+@admin.register(ExternalDelivery)
+class ExternalDeliveryAdmin(admin.ModelAdmin):
+    list_display = ("pk", "channel", "state", "attempts", "last_error", "created_at", "sent_at")
+    list_filter = ("channel", "state")
+    readonly_fields = ("outbox", "channel", "attempts", "last_error", "created_at", "sent_at")
+    fields = ("outbox", "channel", "state", "attempts", "next_attempt_at", "last_error", "created_at", "sent_at")
+
+    def has_add_permission(self, request):
+        return False
 
 
 admin.site.register(OrgUnit)

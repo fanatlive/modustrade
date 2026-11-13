@@ -19,6 +19,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from .attachments import AttachmentError, check_uploads, store_uploads
+from .channels import deliver_external, enqueue_external, poll_telegram
 from .contracts import AssignmentReview, CommandName, CommandPayload
 from .models import (Category, Comment, Decision, Event, IdempotencyRecord, InfoRequest,
                      Notification, OrgUnit, Outbox, ProcessingCycle, Queue, RoutingRule,
@@ -785,6 +786,7 @@ def process_outbox(limit: int = 100) -> dict[str, int]:
                         answered_at__isnull=True,reminder_generation=job.event.payload.get("reminder_generation",1)).exists()
                 if permitted:
                     notification, _ = Notification.objects.get_or_create(outbox=job,defaults={"user":job.recipient,"ticket":job.ticket,"message":job.message,"created_at":timezone.now()})
+                    enqueue_external(job)
                     if job.event.kind == "INFO_REMINDER" and job.recipient_id == job.ticket.author_id:
                         generation = job.event.payload.get("reminder_generation",1)
                         InfoRequest.objects.filter(pk=job.event.payload.get("info_id"),ticket=job.ticket,answered_at__isnull=True,reminder_generation=generation,reminder_delivered_at__isnull=True).update(reminder_delivered_at=notification.created_at)
@@ -798,6 +800,9 @@ def process_outbox(limit: int = 100) -> dict[str, int]:
             delay = min(3600,2**min(job.attempts,10)*5)
             Outbox.objects.filter(pk=job.pk).update(state="failed" if job.attempts>=8 else "pending",locked_until=None,next_attempt_at=timezone.now()+timedelta(seconds=delay),last_error=type(exc).__name__[:500])
             result["failed"] += 1
+    # External channels run after in-app delivery and never block or roll it back.
+    result.update(deliver_external(limit))
+    poll_telegram()
     return result
 
 

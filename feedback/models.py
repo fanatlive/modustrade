@@ -38,6 +38,15 @@ class User(AbstractUser):
     extra_roles = models.JSONField(default=list, blank=True)
     org_unit = models.ForeignKey(OrgUnit, null=True, blank=True, on_delete=models.SET_NULL)
     restricted_access = models.BooleanField(default=False)
+    # External notification channels. In-app notifications are always kept.
+    notify_email = models.BooleanField("Уведомления на почту", default=True)
+    notify_telegram = models.BooleanField("Уведомления в Telegram", default=True)
+    notify_bitrix = models.BooleanField("Уведомления в Битрикс24", default=True)
+    telegram_chat_id = models.CharField("Telegram chat id", max_length=32, blank=True, default="")
+    telegram_link_token = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    telegram_link_expires_at = models.DateTimeField(null=True, blank=True)
+    bitrix_user_id = models.CharField("ID пользователя в Битрикс24", max_length=32, blank=True, default="",
+                                      help_text="Если пусто, определяется по e-mail при первой отправке.")
 
     def clean(self):
         super().clean()
@@ -333,6 +342,34 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class ExternalDelivery(models.Model):
+    """One outbound copy of an in-app notification per external channel."""
+    class Channel(models.TextChoices):
+        EMAIL = "email", "Почта"
+        TELEGRAM = "telegram", "Telegram"
+        BITRIX24 = "bitrix24", "Битрикс24"
+
+    outbox = models.ForeignKey(Outbox, on_delete=models.CASCADE, related_name="external_deliveries")
+    channel = models.CharField(max_length=12, choices=Channel.choices)
+    state = models.CharField(max_length=12, default="pending", choices=[(s, s) for s in ["pending", "processing", "sent", "failed", "skipped"]])
+    attempts = models.PositiveIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=120, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["state", "next_attempt_at"])]
+        constraints = [models.UniqueConstraint(fields=["outbox", "channel"], name="unique_external_delivery")]
+
+
+class IntegrationState(models.Model):
+    """Small persistent cursors for integrations (e.g. Telegram update offset)."""
+    key = models.CharField(max_length=80, unique=True)
+    value = models.JSONField(default=dict, blank=True)
 
 
 class IdempotencyRecord(models.Model):

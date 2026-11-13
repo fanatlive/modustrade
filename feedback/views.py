@@ -20,8 +20,9 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import AnalyticsFilterForm, CategoryForm, CommandForm, CreateTicketForm, PRIORITIES, QueueForm, RetryDeliveryForm, RoutingRuleForm, STATUSES, TYPES, TicketFilterForm
-from .models import Attachment, Category, Event, InfoRequest, Notification, OrgUnit, Outbox, ProcessingCycle, Queue, RoutingRule, Ticket, TicketRelation, User
+from .forms import AnalyticsFilterForm, CategoryForm, CommandForm, CreateTicketForm, NotificationSettingsForm, PRIORITIES, QueueForm, RetryDeliveryForm, RoutingRuleForm, STATUSES, TYPES, TicketFilterForm
+from . import channels
+from .models import Attachment, Category, Event, ExternalDelivery, InfoRequest, Notification, OrgUnit, Outbox, ProcessingCycle, Queue, RoutingRule, Ticket, TicketRelation, User
 from .permissions import can_coordinate, can_process, can_view_internal, has_role, operational_users, staff_scope, visible_notifications, visible_tickets
 from .services import COMMAND_TYPE_MATRIX, DomainError, create_ticket, execute_command
 from .search import scoped_search, similar_tickets, suggest_similar
@@ -450,6 +451,54 @@ def notifications(request):
     items = visible_notifications(request.user).select_related("ticket")
     page = Paginator(items, 25).get_page(request.GET.get("page"))
     return render(request, "feedback/notifications.html", {"page_obj": page, "active_nav": "notifications"})
+
+
+@login_required
+def notification_settings(request):
+    user = request.user
+    form = NotificationSettingsForm(instance=user)
+    if request.method == "POST":
+        operation = request.POST.get("operation")
+        if operation == "save":
+            previous_email = user.email
+            form = NotificationSettingsForm(request.POST, instance=user)
+            if form.is_valid():
+                saved = form.save(commit=False)
+                if saved.email != previous_email:
+                    saved.bitrix_user_id = ""  # re-resolve the Bitrix24 account for the new address
+                saved.save(update_fields=["email", "notify_email", "notify_telegram", "notify_bitrix", "bitrix_user_id"])
+                messages.success(request, "Настройки уведомлений сохранены.")
+                return redirect("feedback:notification_settings")
+        elif operation == "telegram_link" and channels.telegram_enabled():
+            if channels.start_telegram_link(user):
+                messages.success(request, "Ссылка готова: откройте Telegram и нажмите «Запустить».")
+            else:
+                messages.error(request, "Не удалось связаться с Telegram-ботом. Проверьте TELEGRAM_BOT_TOKEN.")
+            return redirect("feedback:notification_settings")
+        elif operation == "telegram_unlink":
+            User.objects.filter(pk=user.pk).update(telegram_chat_id="", telegram_link_token="", telegram_link_expires_at=None)
+            messages.success(request, "Telegram отключён.")
+            return redirect("feedback:notification_settings")
+        elif operation == "test":
+            outcome = channels.send_test(user)
+            if not outcome:
+                messages.error(request, "Нет ни одного подключённого внешнего канала.")
+            for channel, code in outcome.items():
+                label = dict(ExternalDelivery.Channel.choices)[channel]
+                if code == "ok":
+                    messages.success(request, f"{label}: тестовое сообщение отправлено.")
+                else:
+                    messages.error(request, f"{label}: не удалось отправить ({code}).")
+            return redirect("feedback:notification_settings")
+    user.refresh_from_db()
+    context = {
+        "form": form, "active_nav": "notifications",
+        "email_enabled": channels.email_enabled(), "email_to_file": settings.EMAIL_BACKEND.endswith("filebased.EmailBackend"),
+        "telegram_enabled": channels.telegram_enabled(), "telegram_link": channels.telegram_link_url(user) if channels.telegram_enabled() else "",
+        "bitrix_enabled": channels.bitrix_enabled(), "active_channels": channels.channels_for(user),
+        "recent": ExternalDelivery.objects.filter(outbox__recipient=user).select_related("outbox__ticket").order_by("-pk")[:10],
+    }
+    return render(request, "feedback/notification_settings.html", context)
 
 
 @login_required
