@@ -149,6 +149,17 @@ class RetryDeliveryForm(forms.Form):
     reason = forms.CharField(label="Причина повторной доставки", max_length=5000, widget=forms.Textarea(attrs={"rows": 2}))
 
 
+class NotificationSettingsForm(forms.ModelForm):
+    email = forms.EmailField(label="Рабочая почта", required=False, max_length=254,
+                             widget=forms.EmailInput(attrs={"autocomplete": "email", "placeholder": "name@company.ru"}))
+
+    class Meta:
+        model = User
+        fields = ["email", "notify_email", "notify_telegram", "notify_bitrix"]
+        labels = {"notify_email": "Присылать на почту", "notify_telegram": "Присылать в Telegram",
+                  "notify_bitrix": "Присылать в Битрикс24"}
+
+
 class RoutingRuleForm(forms.ModelForm):
     request_type = forms.ChoiceField(label="Тип обращения", required=False, choices=[("", "Любой тип"), *TYPES])
     class Meta:

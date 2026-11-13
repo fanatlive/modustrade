@@ -154,3 +154,41 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+// Ticket "next step" buttons: one action form open at a time. Without JS the
+// buttons are #anchors and CSS :target opens the matching form.
+document.addEventListener("DOMContentLoaded", () => {
+  const toggles = [...document.querySelectorAll("[data-action-toggle]")];
+  if (!toggles.length) return;
+  const panels = [...document.querySelectorAll("[data-action-panel]")];
+  document.querySelector("#next-step")?.classList.add("is-enhanced");
+  const show = (id, focus) => {
+    panels.forEach((panel) => panel.classList.toggle("is-open", panel.id === id));
+    toggles.forEach((toggle) => toggle.setAttribute("aria-expanded", String(toggle.getAttribute("aria-controls") === id)));
+    const panel = id && document.getElementById(id);
+    if (panel && focus) {
+      panel.querySelector("textarea, input:not([type=hidden]), select")?.focus({preventScroll: true});
+      panel.scrollIntoView({block: "nearest", behavior: "smooth"});
+    }
+  };
+  toggles.forEach((toggle) => {
+    toggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      const id = toggle.getAttribute("aria-controls");
+      show(toggle.getAttribute("aria-expanded") === "true" ? null : id, true);
+    });
+    toggle.addEventListener("keydown", (event) => {
+      if (event.key === " ") { event.preventDefault(); toggle.click(); }
+    });
+  });
+  document.querySelectorAll("[data-action-close]").forEach((close) => {
+    close.addEventListener("click", (event) => {
+      event.preventDefault();
+      const id = close.closest("[data-action-panel]")?.id;
+      show(null);
+      toggles.find((toggle) => toggle.getAttribute("aria-controls") === id)?.focus();
+    });
+  });
+  const fromHash = panels.find((panel) => "#" + panel.id === window.location.hash);
+  if (fromHash) show(fromHash.id, false);
+});

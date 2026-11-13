@@ -1,5 +1,6 @@
 """Explicit local-demo defaults; PostgreSQL is required for a production pilot."""
 import os
+import sys
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -115,4 +116,29 @@ if not DEBUG and OPERATIONS_TOKEN and (len(OPERATIONS_TOKEN) < 32 or OPERATIONS_
     raise ImproperlyConfigured('OPERATIONS_TOKEN must be a private random value of at least 32 characters.')
 RATE_LOGIN_IP = int(os.getenv('RATE_LOGIN_IP', '20'))
 RATE_LOGIN_ACCOUNT = int(os.getenv('RATE_LOGIN_ACCOUNT', '10'))
+# --- External notification channels -------------------------------------
+# Public base URL used in links inside e-mail, Telegram and Bitrix24 messages.
+SITE_URL = os.getenv('SITE_URL', 'http://127.0.0.1:8000').rstrip('/')
+_TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+# On by default for the local demo (letters go to files) and whenever SMTP is configured.
+NOTIFY_EMAIL = os.getenv('NOTIFY_EMAIL', '1' if (DEBUG or EMAIL_HOST) else '0').lower() in {'1', 'true', 'yes'}
+EMAIL_PORT = int(os.getenv('EMAIL_PORT') or ('465' if os.getenv('EMAIL_USE_SSL', '0').lower() in {'1', 'true', 'yes'} else '587'))
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', '0').lower() in {'1', 'true', 'yes'}
+EMAIL_USE_TLS = (not EMAIL_USE_SSL) and os.getenv('EMAIL_USE_TLS', '1').lower() in {'1', 'true', 'yes'}
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '10'))
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL') or EMAIL_HOST_USER or 'noreply@localhost'
+# Without SMTP settings the local demo writes each letter to .local/sent-emails/ instead of sending it.
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND') or (
+    'django.core.mail.backends.smtp.EmailBackend' if EMAIL_HOST or not DEBUG
+    else 'django.core.mail.backends.filebased.EmailBackend')
+EMAIL_FILE_PATH = BASE_DIR / '.local' / 'sent-emails'
+# Tests never talk to real external services, even when .env holds credentials.
+TELEGRAM_BOT_TOKEN = '' if _TESTING else os.getenv('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME', '').lstrip('@')
+BITRIX24_WEBHOOK_URL = '' if _TESTING else os.getenv('BITRIX24_WEBHOOK_URL', '').rstrip('/')
+if BITRIX24_WEBHOOK_URL and not BITRIX24_WEBHOOK_URL.startswith('https://'):
+    raise ImproperlyConfigured('BITRIX24_WEBHOOK_URL must be an https:// inbound webhook URL.')
 LOGGING = {'version': 1, 'disable_existing_loggers': False, 'handlers': {'console': {'class': 'logging.StreamHandler'}}, 'root': {'handlers': ['console'], 'level': 'INFO'}}

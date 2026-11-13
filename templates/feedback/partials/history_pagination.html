@@ -1,6 +1,1 @@
-{% if navigation.pages > 1 %}
-<nav class="pagination" aria-label="{{ navigation.label }}"><span>Страница {{ navigation.page }} из {{ navigation.pages }}</span><div>
-{% if navigation.previous %}<a class="button button-secondary button-small" href="{{ navigation.previous }}">Назад</a>{% endif %}
-{% if navigation.next %}<a class="button button-secondary button-small" href="{{ navigation.next }}">Далее</a>{% endif %}
-</div></nav>
-{% endif %}
+{% if navigation.pages > 1 %}{% include 'partials/page_links.html' with links=navigation.links previous=navigation.previous next=navigation.next label=navigation.label %}{% endif %}

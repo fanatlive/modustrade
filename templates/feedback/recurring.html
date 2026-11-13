@@ -2,7 +2,7 @@
 {% block title %}Повторяющиеся проблемы{% endblock %}
 {% block breadcrumb %}Повторяющиеся проблемы{% endblock %}
 {% block content %}
-<div class="page-heading"><div><h1>Повторяющиеся проблемы</h1><p>Темы с подтверждёнными связями дубликатов в вашей области доступа.</p></div></div>
+<div class="page-heading"><div><h1>Повторяющиеся проблемы</h1></div></div>
 <section class="surface content-section"><form method="get" class="stack-form"><div class="field-grid">{% for field in filters %}<div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}</div>{{ filters.non_field_errors }}<div class="form-actions"><button class="button button-primary">Показать</button></div></form>
 <p class="field-help">Число повторов не включает основную карточку. Период относится к дате подачи повторных обращений; основная карточка может быть старше. Без периода учитываются и обращения с неизвестной датой. Показаны текущие прямые связи, без объединения цепочек и без исторического среза. Демо и рабочие данные считаются отдельно.</p></section>
 <section class="surface recurring-list" aria-label="Рейтинг повторяющихся проблем">

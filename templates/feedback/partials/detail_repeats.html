@@ -2,6 +2,6 @@
 <section class="similar-hints" id="possible-repeats" aria-labelledby="possible-repeats-title">
   <div class="similar-hints-head">{% include 'partials/icon.html' with icon='repeat' %}<h2 id="possible-repeats-title">Возможные повторы</h2></div>
   <ul>{% for item in possible_repeats %}<li><a href="{% url 'feedback:detail' item.pk %}"><span class="similar-number">{{ item.number }}</span><span class="similar-title">{{ item.title }}</span></a><span class="status-badge status-{{ item.status }}"><i></i>{{ item.status_label }}</span></li>{% endfor %}</ul>
-  <p class="field-help">Совпадение по ключевым словам в вашей зоне доступа. Система ничего не связывает сама: проверьте содержание и при совпадении используйте действие «Отметить дубликатом». <a href="{% url 'feedback:similar' ticket.pk %}">Все похожие</a></p>
+  <p class="field-help">Похоже по ключевым словам. Если это тот же вопрос, отметьте дубликатом в «Других действиях». <a href="{% url 'feedback:similar' ticket.pk %}">Все похожие</a></p>
 </section>
 {% endif %}

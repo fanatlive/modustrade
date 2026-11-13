@@ -1,3 +1,4 @@
+{% if ticket.cycle_no > 1 %}
 <section class="surface content-section cycle-history" id="cycle-history"><h2>Циклы рассмотрения</h2>
 {% for item in cycles %}
   <details class="history-disclosure cycle-record" {% if item.number != ticket.cycle_no %}open{% endif %}>
@@ -10,3 +11,4 @@
 {% endfor %}
 {% include 'feedback/partials/history_pagination.html' with navigation=cycles_navigation %}
 </section>
+{% endif %}

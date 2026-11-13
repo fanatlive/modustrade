@@ -46,3 +46,49 @@ def author_summary(ticket, cycle, info):
     return {'title': title, 'message': message, 'due': due, 'due_label': due_label,
             'overdue': bool(ticket.status != 'CLOSED' and due and due < timezone.now()),
             'action': action, 'anchor': anchor, 'can_reopen': can_reopen}
+
+
+def staff_summary(ticket, cycle, info, *, can_coordinate, awaiting_reassignment, pending_withdraw, type_commands):
+    """What the processor or coordinator should do next, in one sentence."""
+    due, due_label = None, ''
+    if pending_withdraw and can_coordinate:
+        title = 'Автор просит отозвать обращение'
+        message = 'Согласуйте остановку работ или продолжите работу, если отзыв сейчас невозможен.'
+    elif awaiting_reassignment:
+        title = 'Назначьте исполнителя' if can_coordinate else 'Ждём назначения исполнителя'
+        message = ('Ответ автора получен, решение и срок выполнения действуют. Выберите, кто продолжит реализацию.'
+                   if can_coordinate else 'Координатор должен назначить исполнителя, чтобы продолжить реализацию.')
+        due, due_label = ticket.plan_due_at, 'Выполнить до'
+    elif ticket.status == 'NEW':
+        title = 'Новое обращение ждёт разбора'
+        message = 'Начните рассмотрение: автор увидит, что обращением занялись.'
+        if cycle:
+            due, due_label = cycle.first_response_due_at, 'Первый ответ до'
+    elif ticket.status == 'REVIEW':
+        if {'approve', 'decline'} & type_commands:
+            title = 'Примите решение'
+            message = ('Одобрите, если предложение стоит выполнить, или откажите с объяснением для автора. '
+                       'Если сведений не хватает, задайте автору вопрос.')
+        elif 'acknowledge' in type_commands:
+            title = 'Обработайте положительный отзыв'
+            message = 'Зафиксируйте, кому передана благодарность, и закройте обращение.'
+        else:
+            title = 'Продолжите рассмотрение'
+            message = 'Решение уже принято. Уточните детали с автором или передайте обращение исполнителю.'
+        if cycle:
+            due, due_label = cycle.decision_due_at, 'Решение до'
+    elif ticket.status == 'WAITING_INFO':
+        title = 'Ждём ответа автора'
+        message = 'Срок решения на паузе, пока автор отвечает на вопрос.'
+        if can_coordinate:
+            message += ' Если ответа нет, можно продлить срок или продолжить без него.'
+        if info:
+            due, due_label = info.due_at, 'Ответ автора до'
+    elif ticket.status == 'IN_PROGRESS':
+        title = 'Выполните работу и подтвердите результат'
+        message = 'Когда результат достигнут по согласованному критерию, зафиксируйте его. Автор получит уведомление.'
+        due, due_label = ticket.plan_due_at, 'Выполнить до'
+    else:
+        return None
+    return {'title': title, 'message': message, 'due': due, 'due_label': due_label,
+            'overdue': bool(due and due < timezone.now())}

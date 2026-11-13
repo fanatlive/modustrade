@@ -2,7 +2,7 @@
 {% block title %}Сбои доставки{% endblock %}
 {% block breadcrumb %}Сбои доставки{% endblock %}
 {% block content %}
-<div class="page-heading"><div><h1>Сбои доставки</h1><p>Уведомления в вашей зоне координации, исчерпавшие автоматические попытки.</p></div></div>
+<div class="page-heading"><div><h1>Сбои доставки</h1></div></div>
 <section class="surface">
 {% for item in page_obj %}<article class="notification-item"><div><div class="notification-heading"><a href="{% url 'feedback:detail' item.ticket_id %}">{{ item.ticket.number }}</a><span class="subtle-text">Попыток: {{ item.attempts }}</span></div><p>{{ item.event.summary }}</p><p class="field-help">Получатель: {{ item.recipient }}. Последняя ошибка: {{ item.last_error|default:'Не указана' }}</p></div><a class="button button-secondary" href="{% url 'feedback:retry_delivery' item.pk %}">Повторить доставку</a></article>{% empty %}<div class="content-section"><h2>Сбоев доставки нет</h2><p class="field-help">Новые сбои появятся здесь после завершения автоматических попыток.</p></div>{% endfor %}
 {% include 'partials/pagination.html' %}</section>

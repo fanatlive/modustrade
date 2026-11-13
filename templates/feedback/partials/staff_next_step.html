@@ -1,0 +1,135 @@
+{% comment %}
+Processor / coordinator: the one decision this ticket needs now, with the main actions as visible buttons.
+Each button opens its form right below (JS toggles; without JS the #anchor + :target opens it).
+{% endcomment %}
+{% with s=staff_summary %}
+<section class="surface staff-next{% if s.overdue %} is-overdue{% endif %}" id="next-step" aria-label="Ваш следующий шаг">
+  <div class="staff-next-head">
+    <div>
+      <p class="eyebrow">Ваш следующий шаг</p>
+      <h2>{{ s.title }}</h2>
+      <p>{{ s.message }}</p>
+    </div>
+    <dl>
+      {% if s.due %}<div><dt>{{ s.due_label }}</dt><dd>{{ s.due|date:'d.m.Y H:i' }}{% if s.overdue %}<span class="overdue-chip">Срок прошёл</span>{% endif %}</dd></div>{% endif %}
+      <div class="staff-next-owner"><dt>Ответственный</dt><dd>{{ ticket.assignee|default:'В очереди разбора' }}<small>{{ ticket.queue.name }}</small></dd></div>
+    </dl>
+  </div>
+
+  <div class="decision-bar" role="group" aria-label="Действия по обращению">
+  {% if pending_withdraw and can_coordinate_ticket %}
+    <a class="button button-primary" href="#action-withdraw" role="button" data-action-toggle aria-controls="action-withdraw" aria-expanded="{% if open_action == 'withdraw' %}true{% else %}false{% endif %}">{% include 'partials/icon.html' with icon='check' %}Согласовать отзыв</a>
+  {% endif %}
+  {% if awaiting_reassignment and can_coordinate_ticket %}
+    <a class="button button-primary" href="#action-reassign" role="button" data-action-toggle aria-controls="action-reassign" aria-expanded="{% if open_action == 'assign' %}true{% else %}false{% endif %}">Назначить исполнителя</a>
+  {% elif ticket.status == 'NEW' %}
+    <form method="post" action="{% url 'feedback:command' ticket.pk %}{% if detail_querystring %}?{{ detail_querystring }}{% endif %}" data-submit-form>{% include 'partials/command_fields.html' with action_name='start' %}<button type="submit" class="button button-primary">{% include 'partials/icon.html' with icon='check' %}Начать рассмотрение</button></form>
+  {% elif ticket.status == 'REVIEW' %}
+    {% if 'approve' in type_commands %}<a class="button button-primary" href="#action-approve" role="button" data-action-toggle aria-controls="action-approve" aria-expanded="{% if open_action == 'approve' %}true{% else %}false{% endif %}">{% include 'partials/icon.html' with icon='check' %}Одобрить</a>{% endif %}
+    {% if 'acknowledge' in type_commands %}<a class="button button-primary" href="#action-acknowledge" role="button" data-action-toggle aria-controls="action-acknowledge" aria-expanded="{% if open_action == 'acknowledge' %}true{% else %}false{% endif %}">{% include 'partials/icon.html' with icon='spark' %}Обработать отзыв</a>{% endif %}
+    {% if 'decline' in type_commands %}<a class="button button-decline" href="#action-decline" role="button" data-action-toggle aria-controls="action-decline" aria-expanded="{% if open_action == 'decline' %}true{% else %}false{% endif %}">{% include 'partials/icon.html' with icon='x' %}Отклонить</a>{% endif %}
+    {% if not awaiting_reassignment %}<a class="button button-secondary" href="#action-ask" role="button" data-action-toggle aria-controls="action-ask" aria-expanded="{% if open_action == 'ask_info' %}true{% else %}false{% endif %}">{% include 'partials/icon.html' with icon='message' %}Запросить уточнение</a>{% endif %}
+  {% elif ticket.status == 'IN_PROGRESS' %}
+    {% if 'implement' in type_commands %}<a class="button button-primary" href="#action-implement" role="button" data-action-toggle aria-controls="action-implement" aria-expanded="{% if open_action == 'implement' %}true{% else %}false{% endif %}">{% include 'partials/icon.html' with icon='check' %}Подтвердить выполнение</a>{% endif %}
+    <a class="button button-secondary" href="#action-ask" role="button" data-action-toggle aria-controls="action-ask" aria-expanded="{% if open_action == 'ask_info' %}true{% else %}false{% endif %}">{% include 'partials/icon.html' with icon='message' %}Запросить уточнение</a>
+  {% elif ticket.status == 'WAITING_INFO' and can_coordinate_ticket %}
+    <a class="button button-secondary" href="#action-resume" role="button" data-action-toggle aria-controls="action-resume" aria-expanded="{% if open_action == 'resume_info' %}true{% else %}false{% endif %}">Продолжить без ответа</a>
+    <a class="button button-secondary" href="#action-extend" role="button" data-action-toggle aria-controls="action-extend" aria-expanded="{% if open_action == 'extend_info' %}true{% else %}false{% endif %}">{% include 'partials/icon.html' with icon='clock' %}Продлить срок</a>
+    <a class="button button-secondary" href="#action-no-response" role="button" data-action-toggle aria-controls="action-no-response" aria-expanded="{% if open_action == 'no_response' %}true{% else %}false{% endif %}">Закрыть без ответа</a>
+  {% endif %}
+  </div>
+
+  {% if pending_withdraw and can_coordinate_ticket %}
+  <div class="decision-panel{% if open_action == 'withdraw' %} is-open{% endif %}" id="action-withdraw" data-action-panel>
+    <div class="alert alert-warning"><div><strong>Причина отзыва от автора</strong><p>{{ pending_withdraw.payload.reason|linebreaksbr }}</p><span class="subtle-text">{{ pending_withdraw.created_at|date:'d.m.Y H:i' }}</span></div></div>
+    <form method="post" action="{% url 'feedback:command' ticket.pk %}{% if detail_querystring %}?{{ detail_querystring }}{% endif %}" class="stack-form" data-submit-form>{% include 'partials/command_fields.html' with action_name='withdraw' %}{% include 'feedback/partials/action_reason.html' with action_name='withdraw' %}
+      <div class="decision-actions"><button class="button button-primary" type="submit">Согласовать отзыв и закрыть</button><a class="text-button" href="#next-step" data-action-close>Отмена</a></div></form>
+  </div>
+  {% endif %}
+
+  {% if awaiting_reassignment and can_coordinate_ticket %}
+  <div class="decision-panel{% if open_action == 'assign' %} is-open{% endif %}" id="action-reassign" data-action-panel>
+    {% include 'feedback/partials/assign_form.html' %}
+  </div>
+  {% endif %}
+
+  {% if ticket.status == 'REVIEW' and 'approve' in type_commands %}
+  <div class="decision-panel{% if open_action == 'approve' %} is-open{% endif %}" id="action-approve" data-action-panel>
+    <h3>Одобрить и принять в работу</h3>
+    <form method="post" action="{% url 'feedback:command' ticket.pk %}{% if detail_querystring %}?{{ detail_querystring }}{% endif %}" class="stack-form" data-submit-form>{% include 'partials/command_fields.html' with action_name='approve' %}
+      <div class="field"><label for="approve-reason">Что решили сделать</label><textarea id="approve-reason" name="reason" rows="3" required maxlength="5000" placeholder="Например: внедряем еженедельную сводку статусов для поставщиков">{% if command_form.command.value == 'approve' %}{{ command_form.reason.value|default_if_none:'' }}{% endif %}</textarea><span class="field-help">Автор увидит это решение.</span></div>
+      <div class="field-grid two-columns">
+        <div class="field"><label for="approve-criteria">Как поймём, что готово</label><textarea id="approve-criteria" name="criteria" rows="3" required maxlength="5000" placeholder="Проверяемый результат">{% if command_form.command.value == 'approve' %}{{ command_form.criteria.value|default_if_none:'' }}{% endif %}</textarea></div>
+        <div class="field"><label for="approve-due">Выполнить до</label><input id="approve-due" name="plan_due_at" type="datetime-local" required value="{% if command_form.command.value == 'approve' %}{{ command_form.plan_due_at.value|default_if_none:'' }}{% endif %}"></div>
+      </div>
+      <div class="decision-actions"><button class="button button-primary" type="submit">Одобрить и начать работу</button><a class="text-button" href="#next-step" data-action-close>Отмена</a></div>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if ticket.status == 'REVIEW' and 'acknowledge' in type_commands %}
+  <div class="decision-panel{% if open_action == 'acknowledge' %} is-open{% endif %}" id="action-acknowledge" data-action-panel>
+    <h3>Обработать положительный отзыв</h3>
+    <form method="post" action="{% url 'feedback:command' ticket.pk %}{% if detail_querystring %}?{{ detail_querystring }}{% endif %}" class="stack-form" data-submit-form>{% include 'partials/command_fields.html' with action_name='acknowledge' %}
+      <div class="field"><label for="ack-reason">Как обработан отзыв</label><textarea id="ack-reason" name="reason" rows="3" required maxlength="5000" placeholder="Кому передана благодарность, что зафиксировано">{% if command_form.command.value == 'acknowledge' %}{{ command_form.reason.value|default_if_none:'' }}{% endif %}</textarea></div>
+      <div class="decision-actions"><button class="button button-primary" type="submit">Зафиксировать и закрыть</button><a class="text-button" href="#next-step" data-action-close>Отмена</a></div>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if ticket.status == 'REVIEW' and 'decline' in type_commands %}
+  <div class="decision-panel{% if open_action == 'decline' %} is-open{% endif %}" id="action-decline" data-action-panel>
+    <h3>Отклонить обращение</h3>
+    <form method="post" action="{% url 'feedback:command' ticket.pk %}{% if detail_querystring %}?{{ detail_querystring }}{% endif %}" class="stack-form" data-submit-form>{% include 'partials/command_fields.html' with action_name='decline' %}
+      <div class="field"><label for="decline-reason">Причина отказа</label><textarea id="decline-reason" name="reason" rows="4" required maxlength="5000" placeholder="Объясните автору, почему предложение не будет выполнено">{% if command_form.command.value == 'decline' %}{{ command_form.reason.value|default_if_none:'' }}{% endif %}</textarea><span class="field-help">Автор увидит причину. Обращение закроется, автор сможет открыть его повторно в течение пяти рабочих дней.</span></div>
+      <div class="decision-actions"><button class="button button-danger" type="submit">Отклонить и закрыть</button><a class="text-button" href="#next-step" data-action-close>Отмена</a></div>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if ticket.status == 'REVIEW' and not awaiting_reassignment or ticket.status == 'IN_PROGRESS' and not awaiting_reassignment %}
+  <div class="decision-panel{% if open_action == 'ask_info' %} is-open{% endif %}" id="action-ask" data-action-panel>
+    <h3>Вопрос автору</h3>
+    <form method="post" action="{% url 'feedback:command' ticket.pk %}{% if detail_querystring %}?{{ detail_querystring }}{% endif %}" class="stack-form" data-submit-form>{% include 'partials/command_fields.html' with action_name='ask_info' %}
+      <div class="field"><label for="info-question">Что нужно уточнить</label><textarea id="info-question" name="question" rows="3" required maxlength="5000">{% if command_form.command.value == 'ask_info' %}{{ command_form.question.value|default_if_none:'' }}{% endif %}</textarea><span class="field-help">На ответ отводится пять рабочих дней, срок решения на это время останавливается.</span></div>
+      <div class="decision-actions"><button class="button button-primary" type="submit">Отправить запрос</button><a class="text-button" href="#next-step" data-action-close>Отмена</a></div>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if ticket.status == 'IN_PROGRESS' and 'implement' in type_commands %}
+  <div class="decision-panel{% if open_action == 'implement' %} is-open{% endif %}" id="action-implement" data-action-panel>
+    <h3>Подтвердить выполнение</h3>
+    {% if ticket.criteria %}<p class="decision-criteria"><span>Критерий готовности</span>{{ ticket.criteria }}</p>{% endif %}
+    <form method="post" action="{% url 'feedback:command' ticket.pk %}{% if detail_querystring %}?{{ detail_querystring }}{% endif %}" class="stack-form" data-submit-form>{% include 'partials/command_fields.html' with action_name='implement' %}
+      <div class="field-grid two-columns">
+        <div class="field"><label for="implementation-result">Что сделано</label><textarea id="implementation-result" name="result" rows="3" required maxlength="5000">{% if command_form.command.value == 'implement' %}{{ command_form.result.value|default_if_none:'' }}{% endif %}</textarea></div>
+        <div class="field"><label for="implementation-evidence">Чем подтверждается</label><textarea id="implementation-evidence" name="evidence" rows="3" required maxlength="5000" placeholder="Ссылка, документ или проверяемое описание">{% if command_form.command.value == 'implement' %}{{ command_form.evidence.value|default_if_none:'' }}{% endif %}</textarea></div>
+      </div>
+      <div class="decision-actions"><button class="button button-primary" type="submit">Зафиксировать выполнение</button><a class="text-button" href="#next-step" data-action-close>Отмена</a></div>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if ticket.status == 'WAITING_INFO' and can_coordinate_ticket %}
+  <div class="decision-panel{% if open_action == 'resume_info' %} is-open{% endif %}" id="action-resume" data-action-panel>
+    <h3>Продолжить рассмотрение без ответа автора</h3>
+    <form method="post" action="{% url 'feedback:command' ticket.pk %}{% if detail_querystring %}?{{ detail_querystring }}{% endif %}" class="stack-form" data-submit-form>{% include 'partials/command_fields.html' with action_name='resume_info' %}{% include 'feedback/partials/action_reason.html' with action_name='resume_info' %}
+      <div class="decision-actions"><button class="button button-primary" type="submit">Возобновить рассмотрение</button><a class="text-button" href="#next-step" data-action-close>Отмена</a></div></form>
+  </div>
+  <div class="decision-panel{% if open_action == 'extend_info' %} is-open{% endif %}" id="action-extend" data-action-panel>
+    <h3>Продлить срок ответа</h3>
+    <form method="post" action="{% url 'feedback:command' ticket.pk %}{% if detail_querystring %}?{{ detail_querystring }}{% endif %}" class="stack-form" data-submit-form>{% include 'partials/command_fields.html' with action_name='extend_info' %}
+      <div class="field"><label for="extend-info-due">Новый срок ответа</label><input id="extend-info-due" type="datetime-local" name="due_at" required value="{% if command_form.command.value == 'extend_info' %}{{ command_form.due_at.value|default_if_none:'' }}{% endif %}"><span class="field-help">Суммарная пауза срока решения ограничена 40 рабочими часами.</span></div>
+      {% include 'feedback/partials/action_reason.html' with action_name='extend_info' %}
+      <div class="decision-actions"><button class="button button-primary" type="submit">Продлить срок</button><a class="text-button" href="#next-step" data-action-close>Отмена</a></div></form>
+  </div>
+  <div class="decision-panel{% if open_action == 'no_response' %} is-open{% endif %}" id="action-no-response" data-action-panel>
+    <h3>Закрыть без ответа автора</h3>
+    <form method="post" action="{% url 'feedback:command' ticket.pk %}{% if detail_querystring %}?{{ detail_querystring }}{% endif %}" class="stack-form" data-submit-form>{% include 'partials/command_fields.html' with action_name='no_response' %}
+      <div class="field"><label for="no-response-reason">Основание</label><textarea id="no-response-reason" name="reason" rows="3" required maxlength="5000">{% if command_form.command.value == 'no_response' %}{{ command_form.reason.value|default_if_none:'' }}{% endif %}</textarea><span class="field-help">Доступно после истечения срока ответа и доставленного напоминания.</span></div>
+      <div class="decision-actions"><button class="button button-secondary" type="submit">Завершить рассмотрение</button><a class="text-button" href="#next-step" data-action-close>Отмена</a></div></form>
+  </div>
+  {% endif %}
+</section>
+{% endwith %}
