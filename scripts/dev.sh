@@ -14,6 +14,7 @@ py="$venv_dir/bin/python"
 "$py" manage.py migrate --noinput
 "$py" manage.py load_demo
 "$py" manage.py load_hackathon_demo
+"$py" manage.py load_pavlodar_demo
 "$py" manage.py collectstatic --noinput
 "$py" manage.py check
 if [[ "${1:-}" == '--prepare-only' ]]; then exit 0; fi

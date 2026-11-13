@@ -19,6 +19,8 @@ if (-not (Test-Path -LiteralPath '.env')) { Copy-Item -LiteralPath '.env.example
 if ($LASTEXITCODE -ne 0) { throw 'Database migration failed.' }
 & $pythonPath manage.py load_demo
 if ($LASTEXITCODE -ne 0) { throw 'Demo import failed.' }
+& $pythonPath manage.py load_pavlodar_demo
+if ($LASTEXITCODE -ne 0) { throw 'Pavlodar demo import failed.' }
 & $pythonPath manage.py collectstatic --noinput
 if ($LASTEXITCODE -ne 0) { throw 'Static asset collection failed.' }
 New-Item -ItemType Directory -Force -Path '.local' | Out-Null

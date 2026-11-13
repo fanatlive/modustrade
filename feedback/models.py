@@ -197,6 +197,12 @@ class Ticket(models.Model):
         return text[:107] + "…" if len(text) > 110 else text
 
     @property
+    def body(self):
+        """Description without its first line when that line is already shown as the title."""
+        first, _, rest = self.description.strip().partition("\n")
+        return rest.strip() if rest.strip() and len(first) <= 110 else self.description
+
+    @property
     def status_label(self):
         return self.get_status_display()
 
