@@ -15,11 +15,12 @@ jobs:
           POSTGRES_PASSWORD: local-ci-ephemeral-only
         ports: ['5432:5432']
         options: >-
-          --health-cmd 'pg_isready -U modus_ci -d modus_ci'
+          --health-cmd "pg_isready -U modus_ci -d modus_ci"
           --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       DEBUG: '1'
       DEMO_MODE: '1'
+      DEMO_PASSWORD: local-ci-demo-password
       DB_ENGINE: postgres
       POSTGRES_DB: modus_ci
       POSTGRES_USER: modus_ci
